@@ -1,1 +1,13 @@
-command: ["streamlit", "run", "app/main.py", "--server.address", "0.0.0.0", "--server.port", "8000", "--server.headless", "true"]
+command:
+  - gunicorn
+  - --config
+  - app/gunicorn.conf.py
+  - app.main:app
+
+env:
+  - name: DATA_BACKEND
+    value: databricks
+  - name: DATABRICKS_WAREHOUSE_ID
+    valueFrom: sql-warehouse
+  - name: DATABRICKS_GOLD_TABLE
+    value: main.demo_factory.gold_daily_demand

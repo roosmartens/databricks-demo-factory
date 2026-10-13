@@ -1,0 +1,20 @@
+[project]
+name = "databricks-demo-factory"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = [
+    "flask>=3.0,<4",
+    "gunicorn>=22,<24",
+    "numpy>=1.26,<3",
+    "pandas>=2.1,<3",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+]
+
+databricks = [
+    "databricks-sdk>=0.50,<1",
+    "databricks-sql-connector>=3.3,<5",
+]

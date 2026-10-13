@@ -1,19 +1,19 @@
 # Databricks Demo Factory
 
-A reusable, **case-independent** starter kit for a customer-facing Databricks demo. Runs locally with deterministic synthetic data; can be deployed as a Streamlit Databricks App later.
+A reusable, **case-independent** starter kit for a customer-facing Databricks demo. It runs locally with deterministic synthetic data and separates the web app from a PySpark medallion notebook for Databricks.
 
 ## 1. Run locally (no Homebrew, Databricks account, or credentials required)
 
-Prerequisite: Python 3.11 or 3.12 and Git. In Terminal:
+Prerequisite: Python 3.11 or newer and Git. In Terminal:
 
 ```bash
 cd databricks-demo-factory
 bash scripts/setup.sh
 source .venv/bin/activate
-python -m streamlit run app/main.py
+python -m app.main
 ```
 
-Open the localhost address shown in Terminal (normally http://localhost:8501).
+Open http://localhost:8000. The local app uses synthetic data and does not need Databricks credentials.
 
 ## 2. Run tests
 
@@ -48,9 +48,19 @@ databricks auth profiles
 
 Select the intended workspace profile explicitly. Current Databricks AI Tools install command is `databricks aitools install` for CLI versions that support it; see the official agent skills repository. Older CLI versions may not include this feature.
 
-## 5. Deploy to Databricks Apps
+## 5. Databricks data processing
 
-Create a Databricks App in the workspace UI first, note its name, and ensure the chosen account/workspace supports Apps. Confirm that the app service principal has access to its source and any external resources.
+[`notebooks/demand_medallion.py`](./notebooks/demand_medallion.py) is a Databricks Python notebook source file. Open it in the Databricks workspace UI to run the sample PySpark flow:
+
+- **Bronze** creates deterministic source-like demo records in Delta.
+- **Silver** standardizes types, filters invalid records, and derives forecast errors.
+- **Gold** aggregates by date, market, and category while retaining the dimensions needed by the app.
+
+The notebook defaults to `main.demo_factory`; change its widgets if your workspace uses a different catalog or schema. Replace the synthetic Bronze generator with the case's ingestion step when the customer data source is known. The example writes batch Delta tables with overwrite semantics; production refresh and ingestion choices should match the actual source and update cadence.
+
+## 6. Deploy to Databricks Apps
+
+Run the notebook first, then create a Databricks App and add a SQL warehouse resource with the key `sql-warehouse`. The app uses that resource to query the Gold table. Confirm that the app service principal can use the warehouse and read the table.
 
 Set values in your current shell, using a named CLI profile:
 
@@ -61,16 +71,16 @@ export DATABRICKS_APP_NAME="your-existing-app-name"
 bash scripts/deploy-app.sh
 ```
 
-This syncs the project and deploys using `app.yaml`. It does **not** create a Databricks App resource, SQL warehouse, Unity Catalog tables or other paid resources. Deployment needs network access and suitable permissions. Validate CLI commands against your installed version.
+This syncs the project and deploys using `app.yaml` and the Databricks-enabled `requirements.txt`. The production app expects `main.demo_factory.gold_daily_demand`; update `DATABRICKS_GOLD_TABLE` in `app.yaml` if you changed the notebook's catalog or schema. It does **not** create a Databricks App resource, SQL warehouse, Unity Catalog tables, or other paid resources. Deployment needs network access and suitable permissions. Validate CLI commands against your installed version.
 
 ## 6. Once the actual case arrives
 
 - Put the customer brief into `prompts/ADAPT_CASE.md`.
-- Replace the example metrics and data logic in `app/data.py`.
-- Adapt the demo user journey in `app/main.py`.
+- Replace the synthetic Bronze generator in `notebooks/demand_medallion.py` with the case's ingestion and processing logic.
+- Update the Flask UI and local synthetic data source in `app/`.
 - Use `slides/SLIDE_STORYLINE.md` for the executive pitch.
 - Retest the local app **before** making Databricks connectivity a dependency.
 
 ## What this starter kit does NOT do yet
 
-It does not run Spark, persist Delta tables, train a model, provision cloud resources, or automatically generate PowerPoint slides. Add only the parts genuinely useful for the eventual customer case. Sample forecast predictions are synthetic illustrative values, not an actual trained model. The scenario calculator uses assumptions, not observed savings.
+The local Flask app does not run Spark; Spark processing runs in the Databricks notebook. The starter notebook generates sample Delta tables but does not provision cloud resources, train a model, or automatically generate PowerPoint slides. Forecast predictions are synthetic illustrative values, not an actual trained model or observed savings.
