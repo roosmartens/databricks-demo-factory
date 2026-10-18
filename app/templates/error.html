@@ -3,12 +3,21 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Unable to load · Atlas</title>
+    <meta name="theme-color" content="#0a1014">
+    <title>Unable to load · Databricks</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
   </head>
   <body class="error-page">
     <main class="error-card">
-      <a class="wordmark" href="{{ url_for('index') }}"><span class="brand-mark"></span> atlas</a>
+      <a class="wordmark" href="{{ url_for('index') }}">
+        <span class="brand-mark" aria-hidden="true"></span>
+        <span class="wordmark-name">Databricks</span>
+        <span class="wordmark-divider" aria-hidden="true">/</span>
+        <span class="wordmark-context">Demand planner</span>
+      </a>
       <p class="eyebrow">DEMAND INTELLIGENCE</p>
       <h1>We couldn't load this view.</h1>
       <p class="muted">{{ message }}</p>

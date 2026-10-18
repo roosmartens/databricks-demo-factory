@@ -1,0 +1,35 @@
+bundle:
+  name: demand_planning_demo
+
+include:
+  - resources/*.yml
+
+variables:
+  catalog:
+    description: Unity Catalog catalog for the demo tables (must match DATABRICKS_GOLD_TABLE in app.yaml)
+    default: workspace
+  schema:
+    description: Schema that holds the landing volume and bronze/silver/gold tables
+    default: demo_factory
+  warehouse_id:
+    description: SQL warehouse the web app uses to read the gold table
+    lookup:
+      warehouse: 'Serverless Starter Warehouse'
+  app_name:
+    description: 'App name: lowercase letters, digits, and hyphens; maximum 30 characters'
+    default: demand-planner-${workspace.current_user.domain_friendly_name}
+
+sync:
+  exclude:
+    - .github/**
+    - .ai-dev-kit/**
+    - .vscode/**
+    - tests/**
+    - slides/**
+    - prompts/**
+    - uv.lock
+
+targets:
+  dev:
+    default: true
+    mode: development

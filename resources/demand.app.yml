@@ -1,0 +1,11 @@
+resources:
+  apps:
+    demand_app:
+      name: ${var.app_name}
+      description: Demand planning demo web app (reads the gold table through a SQL warehouse)
+      source_code_path: ..
+      resources:
+        - name: sql-warehouse
+          sql_warehouse:
+            id: ${var.warehouse_id}
+            permission: CAN_USE

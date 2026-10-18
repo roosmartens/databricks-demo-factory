@@ -1,0 +1,28 @@
+resources:
+  jobs:
+    demand_job:
+      name: demand-planning-refresh
+      description: Generate synthetic raw files, refresh bronze/silver/gold, then grant the web app read access.
+      tasks:
+        - task_key: generate_raw_data
+          notebook_task:
+            notebook_path: ../src/notebooks/generate_raw_data.py
+            base_parameters:
+              catalog: ${var.catalog}
+              schema: ${var.schema}
+
+        - task_key: refresh_pipeline
+          depends_on:
+            - task_key: generate_raw_data
+          pipeline_task:
+            pipeline_id: ${resources.pipelines.demand_pipeline.id}
+
+        - task_key: grant_app_access
+          depends_on:
+            - task_key: refresh_pipeline
+          notebook_task:
+            notebook_path: ../src/notebooks/grant_app_access.py
+            base_parameters:
+              catalog: ${var.catalog}
+              schema: ${var.schema}
+              app_principal: ${resources.apps.demand_app.service_principal_client_id}

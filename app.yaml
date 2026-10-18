@@ -10,4 +10,4 @@ env:
   - name: DATABRICKS_WAREHOUSE_ID
     valueFrom: sql-warehouse
   - name: DATABRICKS_GOLD_TABLE
-    value: main.demo_factory.gold_daily_demand
+    value: workspace.demo_factory.gold_daily_demand

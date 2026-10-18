@@ -51,39 +51,43 @@ databricks auth profiles
 
 Select the intended workspace profile explicitly. Current Databricks AI Tools install command is `databricks aitools install` for CLI versions that support it; see the official agent skills repository. Older CLI versions may not include this feature.
 
-## 5. Databricks data processing
+## 5. Deploy the full demo to Databricks (bundle)
 
-[`notebooks/demand_medallion.py`](./notebooks/demand_medallion.py) is a Databricks Python notebook source file. Open it in the Databricks workspace UI to run the sample PySpark flow:
+One [Declarative Automation Bundle](https://docs.databricks.com/dev-tools/bundles/) (`databricks.yml` + `resources/`) creates everything:
 
-- **Bronze** creates deterministic source-like demo records in Delta.
-- **Silver** standardizes types, filters invalid records, and derives forecast errors.
-- **Gold** aggregates by date, market, and category while retaining the dimensions needed by the app.
+| Resource | What it does |
+| --- | --- |
+| Job `demand-planning-refresh` | Runs three tasks in order: generate raw files, refresh the pipeline, grant the app read access |
+| `src/notebooks/generate_raw_data.py` | Writes one synthetic JSON file per day into a Unity Catalog volume (`raw_demand`). Safe to re-run; only new days are written. Includes 3 deliberately bad records |
+| Pipeline `demand-planning-medallion` | Lakeflow Spark Declarative Pipeline (serverless): **Bronze** (Auto Loader) → **Silver** (typed, validated with expectations) → **Gold** (materialized view by date, market, category) |
+| App `demand-planner-<you>` | This Flask app on Databricks Apps, reading `gold_daily_demand` through a SQL warehouse |
 
-The notebook defaults to `main.demo_factory`; change its widgets if your workspace uses a different catalog or schema. Replace the synthetic Bronze generator with the case's ingestion step when the customer data source is known. The example writes batch Delta tables with overwrite semantics; production refresh and ingestion choices should match the actual source and update cadence.
-
-## 6. Deploy to Databricks Apps
-
-Run the notebook first, then create a Databricks App and add a SQL warehouse resource with the key `sql-warehouse`. The app uses that resource to query the Gold table. Confirm that the app service principal can use the warehouse and read the table.
-
-Set values in your current shell, using a named CLI profile:
+Defaults: catalog `workspace`, schema `demo_factory`, warehouse `Serverless Starter Warehouse`. Change them in `databricks.yml` and keep `DATABRICKS_GOLD_TABLE` in `app.yaml` in sync.
 
 ```bash
-export DATABRICKS_PROFILE="YOUR_PROFILE"
-export DATABRICKS_USER_EMAIL="you@example.com"
-export DATABRICKS_APP_NAME="your-existing-app-name"
-bash scripts/deploy-app.sh
+databricks auth profiles                                        # choose your profile
+databricks bundle validate --strict --target dev --profile YOUR_PROFILE
+databricks bundle deploy   --target dev --profile YOUR_PROFILE  # creates the pipeline, job and app
+databricks bundle run demand_job --target dev --profile YOUR_PROFILE   # builds the tables
+databricks bundle run demand_app --target dev --profile YOUR_PROFILE   # starts and deploys the app
 ```
 
-This syncs the project and deploys using `app.yaml` and the Databricks-enabled `requirements.txt`. The production app expects `main.demo_factory.gold_daily_demand`; update `DATABRICKS_GOLD_TABLE` in `app.yaml` if you changed the notebook's catalog or schema. It does **not** create a Databricks App resource, SQL warehouse, Unity Catalog tables, or other paid resources. Deployment needs network access and suitable permissions. Validate CLI commands against your installed version.
+Run the job before the app so the table exists. The job's last task grants the app's service principal `USE CATALOG` on the catalog and `USE SCHEMA` and `SELECT` on the schema.
+
+To simulate new data arriving, run the generator notebook task with a larger `days` value, then run the job again. Bronze picks up only the new files.
+
+Clean up when you are done: `databricks bundle destroy --target dev --profile YOUR_PROFILE` removes the pipeline, job and app. Tables, schema and volume stay unless you drop them.
+
+`notebooks/demand_medallion.py` is an older, single-notebook version of the same flow. It writes the same table names, so do not run it in the same schema as the pipeline.
 
 ## 6. Once the actual case arrives
 
 - Put the customer brief into `prompts/ADAPT_CASE.md`.
-- Replace the synthetic Bronze generator in `notebooks/demand_medallion.py` with the case's ingestion and processing logic.
+- Replace `src/notebooks/generate_raw_data.py` with the case's ingestion, and adapt the Bronze/Silver/Gold files in `src/pipeline/transformations/`.
 - Update the Flask UI and local synthetic data source in `app/`.
 - Use `slides/SLIDE_STORYLINE.md` for the executive pitch.
 - Retest the local app **before** making Databricks connectivity a dependency.
 
 ## What this starter kit does NOT do yet
 
-The local Flask app does not run Spark; Spark processing runs in the Databricks notebook. The starter notebook generates sample Delta tables but does not provision cloud resources, train a model, or automatically generate PowerPoint slides. Forecast predictions are synthetic illustrative values, not an actual trained model or observed savings.
+The local Flask app does not run Spark; Spark processing runs in the Databricks pipeline. The bundle creates Databricks resources that can incur cost, but does not train a model, or automatically generate PowerPoint slides. Forecast predictions are synthetic illustrative values, not an actual trained model or observed savings.

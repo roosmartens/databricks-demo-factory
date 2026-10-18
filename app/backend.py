@@ -49,6 +49,7 @@ def _dashboard_from_rows(rows: list[dict], source: str) -> dict:
             "actual": [row["actual_units"] for row in public_rows],
             "baseline": [row["baseline_units"] for row in public_rows],
             "improved": [row["improved_units"] for row in public_rows],
+            "promo": [row["promotion_days"] for row in public_rows],
         },
     }
 

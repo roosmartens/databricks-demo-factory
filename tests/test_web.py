@@ -10,7 +10,7 @@ def test_dashboard_renders_synthetic_data(monkeypatch):
     response = app.test_client().get("/")
 
     assert response.status_code == 200
-    assert b"Plan with confidence." in response.data
+    assert b"Plan with <em>confidence.</em>" in response.data
     assert b"Synthetic demo data" in response.data
     assert b"Demand over time" in response.data
 
