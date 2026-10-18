@@ -1,0 +1,270 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#0a1014">
+    <title>Demand planning · Customer story</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='story.css') }}">
+  </head>
+  <body>
+    <main class="deck-viewport" id="deck-viewport">
+      <div class="deck-stage" id="deck-stage">
+
+        <!-- === 01 COVER === -->
+        <section class="slide s-cover active visible" data-slide aria-label="Cover">
+          <p class="eyebrow reveal">DEMAND PLANNING · CUSTOMER STORY</p>
+          <h1 class="cover-title reveal" style="--d:1" data-editable>Plan for demand,<br><em>not for yesterday.</em></h1>
+          <p class="cover-sub reveal" style="--d:2" data-editable>From scattered signals to one trusted forecast, on Databricks.</p>
+          <div class="cover-tags reveal" style="--d:3">
+            <span data-editable>ILLUSTRATIVE EUROPEAN RETAILER</span>
+            <span data-editable>DISCUSSION DRAFT</span>
+          </div>
+          <svg class="cover-art" viewBox="0 0 900 560" role="img" aria-label="Sales, promotion and inventory signals merging into one forecast line">
+            <g class="grid-lines">
+              <line x1="0" y1="120" x2="900" y2="120"/><line x1="0" y1="240" x2="900" y2="240"/>
+              <line x1="0" y1="360" x2="900" y2="360"/><line x1="0" y1="480" x2="900" y2="480"/>
+            </g>
+            <path class="band" d="M500 300 C560 230 620 280 680 190 S790 120 900 80 L900 240 C790 280 740 300 680 270 S560 340 500 300 Z"/>
+            <path class="sig sig-a draw" pathLength="1" d="M0 330 C60 280 100 380 160 320 S260 250 320 300 S430 350 500 300"/>
+            <path class="sig sig-b draw" pathLength="1" d="M0 430 C50 470 110 380 170 420 S270 500 330 430 S440 380 500 300"/>
+            <path class="sig sig-c draw" pathLength="1" d="M0 230 C70 200 120 260 190 220 S290 170 350 230 S450 260 500 300"/>
+            <path class="sig sig-f draw" pathLength="1" d="M500 300 C560 240 620 300 680 230 S790 180 900 140"/>
+            <line class="today" x1="500" y1="40" x2="500" y2="520"/>
+            <circle class="node" cx="500" cy="300" r="12"/>
+            <text class="lbl" x="0" y="190">INVENTORY</text>
+            <text class="lbl" x="0" y="300">SALES</text>
+            <text class="lbl" x="0" y="500">PROMOTIONS</text>
+            <text class="lbl lbl-hot" x="514" y="62">TODAY</text>
+            <text class="lbl lbl-hot" x="730" y="330">FORECAST</text>
+          </svg>
+        </section>
+
+        <!-- === 02 DISCOVERY VALIDATION === -->
+        <section class="slide s-discovery" data-slide aria-label="Discovery validation">
+          <p class="eyebrow reveal">01 · LISTEN FIRST</p>
+          <h2 class="title reveal" style="--d:1" data-editable>Before I show anything: is this what you see?</h2>
+          <div class="body disco">
+            <article class="disco-card reveal" style="--d:2"><b>01</b><h3 data-editable>Where does the week go?</h3><p data-editable>Reconciling data, or deciding?</p><span>BUSINESS</span></article>
+            <article class="disco-card reveal" style="--d:3"><b>02</b><h3 data-editable>What does a miss cost?</h3><p data-editable>Empty shelves, markdowns, rush orders.</p><span>BUSINESS</span></article>
+            <article class="disco-card reveal" style="--d:4"><b>03</b><h3 data-editable>Who owns the number?</h3><p data-editable>One version, or one per team?</p><span>DATA</span></article>
+            <article class="disco-card reveal" style="--d:5"><b>04</b><h3 data-editable>What must not change?</h3><p data-editable>Systems, security, skills.</p><span>IT · ARCHITECTURE</span></article>
+          </div>
+        </section>
+
+        <!-- === 03 PROBLEM === -->
+        <section class="slide s-problem" data-slide aria-label="The problem">
+          <p class="eyebrow reveal">02 · THE PROBLEM</p>
+          <h2 class="title reveal" style="--d:1" data-editable>Planners assemble the truth instead of using it.</h2>
+          <div class="body problem">
+            <div class="big-stat reveal" style="--d:2">
+              <strong data-editable>3<span>h</span></strong>
+              <p data-editable>per planner, every week, spent reconciling data</p>
+              <small data-editable>12 planners × 48 weeks = 1,728 hours a year</small>
+            </div>
+            <div class="hours reveal" style="--d:3" role="img" aria-label="A 40-hour week with 3 hours highlighted">
+              <i class="hot"></i><i class="hot"></i><i class="hot"></i><i></i><i></i><i></i><i></i><i></i>
+              <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+              <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+              <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+              <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+              <p>One 40-hour week</p>
+            </div>
+          </div>
+          <p class="assume reveal" style="--d:4" data-editable>HYPOTHESIS · TO VALIDATE IN DISCOVERY</p>
+        </section>
+
+        <!-- === 04 OKRs === -->
+        <section class="slide s-okr" data-slide aria-label="Objectives and key results">
+          <p class="eyebrow reveal">03 · WHAT MUST MOVE</p>
+          <h2 class="title reveal" style="--d:1" data-editable>Three objectives. Three numbers.</h2>
+          <div class="body okr">
+            <article class="okr-card reveal" style="--d:2">
+              <h3 data-editable>Forecast you can trust</h3>
+              <div class="okr-nums"><span>17%</span><em>→</em><strong>10%</strong></div>
+              <div class="okr-bar"><i style="--from:100%;--to:58%"></i></div>
+              <p data-editable>Forecast error (WAPE)</p>
+            </article>
+            <article class="okr-card reveal" style="--d:3">
+              <h3 data-editable>Products on the shelf</h3>
+              <div class="okr-nums"><span>100</span><em>→</em><strong>90</strong></div>
+              <div class="okr-bar"><i style="--from:100%;--to:90%"></i></div>
+              <p data-editable>Stockout days, indexed (−10%)</p>
+            </article>
+            <article class="okr-card reveal" style="--d:4">
+              <h3 data-editable>Time to decide</h3>
+              <div class="okr-nums"><span>3h</span><em>→</em><strong>&lt;1h</strong></div>
+              <div class="okr-bar"><i style="--from:100%;--to:30%"></i></div>
+              <p data-editable>Weekly reconciliation per planner</p>
+            </article>
+          </div>
+          <p class="assume reveal" style="--d:5" data-editable>ILLUSTRATIVE TARGETS · SET WITH THE CLIENT</p>
+        </section>
+
+        <!-- === 05 CURRENT STATE === -->
+        <section class="slide s-current" data-slide aria-label="Current state">
+          <p class="eyebrow reveal">04 · TODAY</p>
+          <h2 class="title reveal" style="--d:1" data-editable>Four sources. Four speeds. One spreadsheet.</h2>
+          <div class="body current reveal" style="--d:2">
+            <svg class="current-lines" viewBox="0 0 1680 520" aria-hidden="true">
+              <path d="M300 60 C430 60 430 260 560 260"/><path d="M300 200 C430 200 430 260 560 260"/>
+              <path d="M300 340 C430 340 430 260 560 260"/><path d="M300 480 C430 480 430 260 560 260"/>
+              <path class="arrow" d="M940 260 H1170"/><path class="arrow" d="M1460 260 H1500"/>
+            </svg>
+            <div class="src" style="top:0"><b>ERP</b><span>nightly</span></div>
+            <div class="src" style="top:140px"><b>Point of sale</b><span>hourly</span></div>
+            <div class="src" style="top:280px"><b>Promo calendar</b><span>manual</span></div>
+            <div class="src" style="top:420px"><b>Warehouse stock</b><span>weekly</span></div>
+            <div class="sheets">
+              <div class="sheet s1">forecast_v7_FINAL.xlsx</div>
+              <div class="sheet s2">forecast_v7_FINAL (2).xlsx</div>
+              <div class="sheet s3">promo_override.xlsx</div>
+            </div>
+            <div class="late" data-editable>T+3 days</div>
+            <div class="meeting"><b>Weekly planning meeting</b><span>Debating numbers</span></div>
+            <div class="decision"><b>Order</b></div>
+            <i class="pin" style="left:455px;top:60px">1</i>
+            <i class="pin" style="left:750px;top:70px">2</i>
+            <i class="pin" style="left:1040px;top:180px">3</i>
+          </div>
+          <ul class="pains reveal" style="--d:3">
+            <li><i>1</i><span data-editable>Four definitions of demand</span></li>
+            <li><i>2</i><span data-editable>Copy-paste, version chaos</span></li>
+            <li><i>3</i><span data-editable>Stale before it is used</span></li>
+          </ul>
+        </section>
+
+        <!-- === 06 VALUE === -->
+        <section class="slide s-value" data-slide aria-label="Business value">
+          <p class="eyebrow reveal">05 · WHAT IT COULD BE WORTH</p>
+          <h2 class="title reveal" style="--d:1" data-editable>Getting time back is worth about €78K a year.</h2>
+          <div class="body value">
+            <div class="equation reveal" style="--d:2" aria-label="12 planners times 3 hours times 48 weeks times 45 euro equals 77,760 euro">
+              <div><strong>12</strong><span>planners</span></div><em>×</em>
+              <div><strong>3 h</strong><span>per week</span></div><em>×</em>
+              <div><strong>48</strong><span>weeks</span></div><em>×</em>
+              <div><strong>€45</strong><span>per hour</span></div><em>=</em>
+              <div class="result"><strong>€77,760</strong><span>capacity value / year</span></div>
+            </div>
+            <div class="sens reveal" style="--d:3" role="img" aria-label="Sensitivity: 2 hours 51.8 thousand, 3 hours 77.8 thousand, 4 hours 103.7 thousand euro">
+              <p class="mini-title">IF PLANNERS SAVE…</p>
+              <div class="bars">
+                <div class="bar"><b>€51.8K</b><i style="height:70px"></i><span>2 h</span></div>
+                <div class="bar base"><b>€77.8K</b><i style="height:105px"></i><span>3 h · base</span></div>
+                <div class="bar"><b>€103.7K</b><i style="height:140px"></i><span>4 h</span></div>
+              </div>
+            </div>
+            <div class="levers reveal" style="--d:4">
+              <p class="mini-title">NOT YET SIZED</p>
+              <div class="lever"><b>Fewer stockouts</b><span>Size with client data</span></div>
+              <div class="lever"><b>Less overstock</b><span>Size with client data</span></div>
+            </div>
+          </div>
+          <p class="assume reveal" style="--d:5" data-editable>ILLUSTRATIVE CAPACITY-VALUE SCENARIO · TIME FREED, NOT CASH SAVED</p>
+        </section>
+
+        <!-- === 07 FUTURE ARCHITECTURE === -->
+        <section class="slide s-arch" data-slide aria-label="Future-state architecture">
+          <p class="eyebrow reveal">06 · TOMORROW</p>
+          <h2 class="title reveal" style="--d:1" data-editable>One governed foundation, from signal to decision.</h2>
+          <div class="body arch reveal" style="--d:2" role="img" aria-label="Sources flow through ingestion into a governed lakehouse with bronze, silver and gold layers and forecasting, then to the planning app, Genie and dashboards">
+            <div class="col col-src"><p class="col-h">SOURCES</p><div class="chips"><span>ERP</span><span>POS</span><span>Promotions</span><span>Inventory</span></div></div>
+            <i class="flow">→</i>
+            <div class="col col-ing"><p class="col-h">INGEST</p><div class="chips"><span>Lakeflow Connect</span><span>Batch or streaming</span></div></div>
+            <i class="flow">→</i>
+            <div class="lake">
+              <p class="col-h hot">DATABRICKS LAKEHOUSE</p>
+              <div class="layers"><span class="l-bronze">Bronze<small>raw</small></span><i>→</i><span class="l-silver">Silver<small>clean</small></span><i>→</i><span class="l-gold">Gold<small>curated</small></span></div>
+              <div class="ai"><span>Forecasting · MLflow</span><span>Quality checks</span></div>
+              <div class="uc"><b>Unity Catalog governance</b><small>access · lineage · audit</small></div>
+            </div>
+            <i class="flow">→</i>
+            <div class="col col-use"><p class="col-h">PEOPLE</p><div class="chips"><span>Planning app</span><span>Ask Genie</span><span>AI/BI dashboards</span></div></div>
+          </div>
+          <ul class="outcomes reveal" style="--d:3">
+            <li data-editable>Every signal</li><li data-editable>Connected once</li><li data-editable>Trusted &amp; governed</li><li data-editable>Used by planners</li>
+          </ul>
+        </section>
+
+        <!-- === 08 DEMO === -->
+        <section class="slide s-demo" data-slide aria-label="Demo">
+          <p class="eyebrow reveal">07 · SEE IT WORK</p>
+          <h2 class="title reveal" style="--d:1" data-editable>From signal to decision in three moves.</h2>
+          <div class="body demo">
+            <ol class="steps reveal" style="--d:2">
+              <li><b>01</b><div><h3 data-editable>See demand</h3><p data-editable>Pick a market and category</p></div></li>
+              <li><b>02</b><div><h3 data-editable>Compare forecasts</h3><p data-editable>Today's method vs improved</p></div></li>
+              <li><b>03</b><div><h3 data-editable>Act</h3><p data-editable>Export and decide</p></div></li>
+            </ol>
+            <div class="chart-card reveal" style="--d:3">
+              <svg viewBox="0 0 760 380" role="img" aria-label="Illustrative chart: actual demand with a current forecast and an improved forecast">
+                <g class="grid-lines"><line x1="0" y1="95" x2="760" y2="95"/><line x1="0" y1="190" x2="760" y2="190"/><line x1="0" y1="285" x2="760" y2="285"/></g>
+                <path class="ln base" d="M20 230 C120 230 200 190 320 190 S480 220 600 170 S700 170 740 160"/>
+                <path class="ln act draw" pathLength="1" d="M20 250 C80 200 120 260 180 210 S260 120 320 170 S400 260 460 200 S560 110 620 150 S700 200 740 130"/>
+                <path class="ln imp draw" pathLength="1" d="M20 248 C80 205 120 256 180 214 S260 126 320 172 S400 254 460 204 S560 116 620 152 S700 196 740 134"/>
+              </svg>
+              <ul class="legend"><li class="l-act">Actual</li><li class="l-base">Current forecast</li><li class="l-imp">Improved forecast</li></ul>
+              <span class="synth">SYNTHETIC DATA</span>
+            </div>
+          </div>
+          <a class="cta reveal" style="--d:4" href="{{ url_for('index') }}">Open the demand-planning demo <span aria-hidden="true">↗</span></a>
+        </section>
+
+        <!-- === 09 ROADMAP === -->
+        <section class="slide s-road" data-slide aria-label="Pilot roadmap">
+          <p class="eyebrow reveal">08 · THE PATH</p>
+          <h2 class="title reveal" style="--d:1" data-editable>Prove it in six weeks, on one slice.</h2>
+          <div class="body road">
+            <div class="weeks reveal" style="--d:2"><span>W1</span><span>W2</span><span>W3</span><span>W4</span><span>W5</span><span>W6</span></div>
+            <div class="phase p1 reveal" style="--d:3"><b data-editable>Baseline</b><span data-editable>Today's accuracy and hours</span></div>
+            <div class="phase p2 reveal" style="--d:4"><b data-editable>Build a thin slice</b><span data-editable>One region, one category</span></div>
+            <div class="phase p3 reveal" style="--d:5"><b data-editable>Prove &amp; decide</b><span data-editable>Planners use it live</span></div>
+            <div class="gate reveal" style="--d:6"><i></i><b data-editable>Go / no-go</b></div>
+          </div>
+          <ul class="measures reveal" style="--d:6">
+            <li data-editable>Forecast error vs baseline</li><li data-editable>Planner hours reconciling</li><li data-editable>Stockout days in scope</li>
+          </ul>
+        </section>
+
+        <!-- === 10 NEXT STEPS === -->
+        <section class="slide s-next" data-slide aria-label="Next steps">
+          <p class="eyebrow reveal">09 · TODAY'S ASK</p>
+          <h2 class="title reveal" style="--d:1" data-editable>Three decisions to start.</h2>
+          <div class="body next">
+            <article class="ask reveal" style="--d:2"><b>1</b><h3 data-editable>Pick the slice</h3><p data-editable>One region, one category</p></article>
+            <article class="ask reveal" style="--d:3"><b>2</b><h3 data-editable>Agree the scorecard</h3><p data-editable>Baseline and success measures</p></article>
+            <article class="ask reveal" style="--d:4"><b>3</b><h3 data-editable>Name the owners</h3><p data-editable>Sponsor and data owner</p></article>
+          </div>
+          <p class="closing reveal" style="--d:5" data-editable>Next step: a 90-minute baseline workshop this week.</p>
+        </section>
+
+        <div class="stage-chrome" aria-hidden="true">
+          <span class="chrome-brand"><i></i>Databricks</span>
+          <span class="chrome-foot">ILLUSTRATIVE SCENARIO · REPLACE WITH CLIENT EVIDENCE</span>
+          <span class="chrome-count"><b data-current>01</b> / <span data-total>10</span></span>
+          <div class="chrome-progress"><i data-progress></i></div>
+        </div>
+      </div>
+    </main>
+
+    <nav class="nav-pill" aria-label="Presentation controls">
+      <button type="button" data-prev aria-label="Previous slide">←</button>
+      <button type="button" data-next aria-label="Next slide">→</button>
+      <button type="button" data-print aria-label="Print">Print</button>
+    </nav>
+
+    <div class="edit-hotzone" aria-hidden="true"></div>
+    <button class="edit-toggle" id="edit-toggle" type="button" aria-label="Toggle slide editing">✎</button>
+    <div class="edit-toolbar" id="edit-toolbar" role="toolbar" aria-label="Edit tools">
+      <span data-edit-status>EDIT MODE · CLICK ANY TEXT</span>
+      <button type="button" data-save-edits>Save edits</button>
+      <button type="button" data-export-html>Download HTML</button>
+      <button type="button" data-reset-edits>Reset</button>
+    </div>
+
+    <script src="{{ url_for('static', filename='story.js') }}" defer></script>
+  </body>
+</html>

@@ -14,6 +14,9 @@ python -m app.main
 ```
 
 Open http://localhost:8000. The local app uses synthetic data and does not need Databricks credentials.
+Open http://localhost:8000/story for a ten-slide, Databricks-themed HTML customer story: one idea per slide, with diagrams and numbers instead of bullets. It covers discovery, problem, OKRs, current state, an illustrative value scenario, target architecture, the demo, a six-week pilot, and the ask. Presenter script and objection handling: `slides/SPEAKER_NOTES.md`.
+
+The [Frontend Slides skill](./.github/skills/frontend-slides/SKILL.md) and its MIT license/supporting assets are included for future presentation work. The current deck follows its fixed 16:9 stage and navigation guidance while retaining Flask templates and static assets for the existing app.
 
 ## 2. Run tests
 

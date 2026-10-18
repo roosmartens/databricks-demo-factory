@@ -60,6 +60,11 @@ def index():
     )
 
 
+@app.get("/story")
+def story():
+    return render_template("story.html")
+
+
 @app.get("/export.csv")
 def export_csv():
     filters, error = _filters()

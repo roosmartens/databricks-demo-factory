@@ -15,6 +15,21 @@ def test_dashboard_renders_synthetic_data(monkeypatch):
     assert b"Demand over time" in response.data
 
 
+def test_customer_story_renders_without_loading_dashboard_data():
+    response = app.test_client().get("/story")
+
+    assert response.status_code == 200
+    assert b"Plan for demand," in response.data
+    assert "€77,760".encode() in response.data
+    assert b"ILLUSTRATIVE CAPACITY-VALUE SCENARIO" in response.data
+    assert b"Unity Catalog governance" in response.data
+    assert b"VIEW FOR" not in response.data
+    assert response.data.count(b'data-slide') == 10
+    assert b'class="deck-stage"' in response.data
+    assert b"Open the demand-planning demo" in response.data
+    assert b"Download HTML" in response.data
+
+
 def test_local_dashboard_metrics_match_demo_data(monkeypatch):
     monkeypatch.setenv("DATA_BACKEND", "demo")
     dashboard = load_dashboard("All markets", "All categories", False)
