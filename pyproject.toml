@@ -18,3 +18,7 @@ databricks = [
     "databricks-sdk>=0.50,<1",
     "databricks-sql-connector>=3.3,<5",
 ]
+
+[tool.uv]
+# cryptography 49 dropped macOS Intel wheels; 48.x has universal2 wheels, so Intel Macs avoid a Rust/OpenSSL build.
+constraint-dependencies = ["cryptography<49"]
