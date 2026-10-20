@@ -63,7 +63,8 @@ def test_briefing_cites_the_grower_update(snapshot):
 
 def test_retrieval_finds_the_right_policy():
     assert copilot.retrieve("What are the rules for store transfers?")[0]["section"] == "Store transfers"
-    assert "Huelva" in copilot.retrieve("alternative supplier for strawberries")[0]["section"]
+    # The synonym list stands in for embeddings: the Huelva passage never says "supplier".
+    assert "Huelva" in copilot.retrieve(copilot.expand("alternative supplier for strawberries"))[0]["section"]
 
 
 def test_copilot_page_and_ask_api(monkeypatch):
@@ -72,8 +73,8 @@ def test_copilot_page_and_ask_api(monkeypatch):
 
     page = client.get("/")
     assert page.status_code == 200
-    assert b"Today&#39;s shelf risks" in page.data or b"Today's shelf risks" in page.data
-    assert b"Recommended actions" in page.data
+    assert b"Today&#39;s decisions" in page.data or b"Today's decisions" in page.data
+    assert b"Do this" in page.data and b"Draft message to the store" in page.data
 
     assert client.get("/?item=EHV-04:SKU-1006").status_code == 200
     assert client.get("/?item=nope").status_code == 404
@@ -138,7 +139,8 @@ def test_briefing_falls_back_offline_and_rejects_bad_approval(monkeypatch):
     monkeypatch.delenv("COPILOT_SERVING_ENDPOINT", raising=False)
     client = app.test_client()
     data = client.post("/api/briefing", json={"item": "AMS-01:SKU-1001"}).get_json()
-    assert data["mode"] == "offline"
+    assert data["mode"] == "template"
+    assert data["answer"] and "Why:" in data["answer"] and "[1]" in data["answer"]
     assert client.get("/?approved=bogus").status_code == 404
 
 
@@ -146,3 +148,54 @@ def test_grounding_check_rejects_invented_numbers():
     from app.rag import check_grounding
     assert not check_grounding("Order 999 units [1]", 1, "order 200 units")["passed"]
     assert check_grounding("Order 200 units [1]", 1, "order 200 units")["passed"]
+
+
+def test_ask_routes_numbers_to_genie_and_refuses_off_topic(snapshot):
+    item = snapshot["items"][0]
+    assert copilot.ask("How much waste do we expect per store this week?", item)["mode"] == "route"
+    refused = copilot.ask("What is the capital of France?", item)
+    assert refused["sources"] == [] and "will not guess" in refused["answer"]
+    assert copilot.ask("Why is this at risk?", item)["mode"] == "briefing"
+
+
+def test_ask_stays_on_the_selected_product(snapshot):
+    strawberries = snapshot["items"][0]
+    sections = [s["section"] for s in copilot.ask("Which substitutes can go on the shelf instead?",
+                                                   strawberries)["sources"]]
+    assert sections[0] == "Substitutes for strawberries"
+    supplier = copilot.ask("Is there another supplier?", strawberries)["sources"][0]["section"]
+    assert "Huelva" in supplier
+    bread = _item(snapshot, "RTM-03", "SKU-1008")
+    assert bread["product_name"].startswith("Sourdough")
+    for question in ("Is there an alternative supplier?", "Has this happened before?"):
+        assert not any("strawberr" in s["section"].lower()
+                       for s in copilot.ask(question, bread)["sources"])
+
+
+def test_feedback_is_validated_and_logged(tmp_path, monkeypatch):
+    log = tmp_path / "feedback.jsonl"
+    monkeypatch.setenv("FEEDBACK_LOG", str(log))
+    client = app.test_client()
+    assert client.post("/api/feedback", json={"vote": "maybe", "kind": "ask"}).status_code == 400
+    ok = client.post("/api/feedback", json={"vote": "down", "kind": "ask", "question": "Other supplier?",
+                                            "item": "AMS-01:SKU-1001", "sources": ["Huelva"]})
+    assert ok.status_code == 200
+    assert '"vote": "down"' in log.read_text()
+
+
+def test_page_links_genie_only_when_configured(monkeypatch):
+    monkeypatch.setenv("DATA_BACKEND", "demo")
+    client = app.test_client()
+    monkeypatch.delenv("GENIE_SPACE_URL", raising=False)
+    assert "Ask Genie" not in client.get("/").data.decode()
+    monkeypatch.setenv("GENIE_SPACE_URL", "https://example.cloud.databricks.com/genie/rooms/1")
+    page = client.get("/").data.decode()
+    assert "Ask Genie" in page and 'data-genie="https://example.cloud.databricks.com/genie/rooms/1"' in page
+
+
+def test_deck_tells_problem_demo_solution_future_next():
+    deck = app.test_client().get("/story").data.decode()
+    order = ["The problem", "The art of the possible", "Behind the solution",
+             "Future state at scale", "Next steps"]
+    positions = [deck.index(f'aria-label="{label}"') for label in order]
+    assert positions == sorted(positions)

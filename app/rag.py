@@ -52,17 +52,20 @@ def load_passages(knowledge_dir: Path) -> tuple[dict, ...]:
                 if section and lines:
                     text = " ".join(lines).strip()
                     passages.append({"doc": path.name, "title": title, "section": section,
-                                     "text": text, "tokens": _tokens(f"{title} {section} {text}")})
+                                     "text": text, "tokens": _tokens(f"{section} {section} {text}"),  # headings count double
+                                     "title_tokens": set(_tokens(title))})
                 section, lines = line[3:].strip(), []
             elif section is not None and line.strip():
                 lines.append(line.strip())
     return tuple(passages)
 
 
-def retrieve(knowledge_dir: Path, query: str, k: int = 3, context: str = "") -> list[dict]:
+def retrieve(knowledge_dir: Path, query: str, k: int = 3, context: str = "",
+             context_weight: float = 0.5) -> list[dict]:
     """BM25 over passages; swapped for a Vector Search query on Databricks.
 
-    ``context`` terms (for example the selected product) count half, so the question leads.
+    ``context`` terms (for example the selected product) count ``context_weight``, so the
+    question leads.
     """
     if os.environ.get("COPILOT_VECTOR_INDEX"):
         try:
@@ -72,7 +75,7 @@ def retrieve(knowledge_dir: Path, query: str, k: int = 3, context: str = "") -> 
     passages = load_passages(Path(knowledge_dir))
     if not passages:
         return []
-    terms = [(t, 1.0) for t in _tokens(query)] + [(t, 0.5) for t in _tokens(context)]
+    terms = [(t, 1.0) for t in _tokens(query)] + [(t, context_weight) for t in _tokens(context)]
     n = len(passages)
     avg = sum(len(p["tokens"]) for p in passages) / n
     df = Counter(t for p in passages for t in set(p["tokens"]))
@@ -81,10 +84,12 @@ def retrieve(knowledge_dir: Path, query: str, k: int = 3, context: str = "") -> 
         tf = Counter(p["tokens"])
         score = 0.0
         for t, weight in terms:
+            idf = math.log(1 + (n - df[t] + 0.5) / (df[t] + 0.5))
             if t in tf:
-                idf = math.log(1 + (n - df[t] + 0.5) / (df[t] + 0.5))
                 score += weight * idf * tf[t] * 2.2 / (
                     tf[t] + 1.2 * (0.25 + 0.75 * len(p["tokens"]) / avg))
+            if t in p["title_tokens"]:  # the document title is a weak hint for all its sections
+                score += 0.3 * weight * idf
         if score > 0:
             scored.append((score, p))
     scored.sort(key=lambda pair: -pair[0])
@@ -107,6 +112,27 @@ def _retrieve_vector_search(query: str, k: int) -> list[dict]:
 def first_sentences(text: str, n: int = 2) -> str:
     sentences = re.split(r"(?<=[.!?])\s+", text)
     return " ".join(sentences[:n])
+
+
+def best_sentences(text: str, query: str, n: int = 2) -> str:
+    """The ``n`` sentences of a passage that share most words with the question, in order.
+
+    Quoting the relevant sentences, not the first ones, is what makes an offline answer read
+    like an answer instead of a document excerpt.
+    """
+    sentences = re.split(r"(?<=[.!?])\s+", text)
+    terms = set(_tokens(query))
+    ranked = sorted(range(len(sentences)),
+                    key=lambda i: (-len(terms & set(_tokens(sentences[i]))), i))[:n]
+    return " ".join(sentences[i] for i in sorted(ranked))
+
+
+def relevant(passages: list[dict], share: float = 0.45) -> list[dict]:
+    """Drop passages that score far below the best one, so weak matches are not quoted."""
+    if not passages or "score" not in passages[0]:
+        return passages
+    top = passages[0]["score"]
+    return [p for p in passages if p["score"] >= share * top]
 
 
 _CITATION = re.compile(r"\[(\d+)\]")

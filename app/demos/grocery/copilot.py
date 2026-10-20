@@ -4,6 +4,7 @@ Uses the shared retrieval in ``app.rag`` over this demo's ``knowledge/`` documen
 """
 import datetime as dt
 import json
+import re
 from pathlib import Path
 
 from app import rag
@@ -18,8 +19,8 @@ SYSTEM_PROMPT = (
 )
 
 
-def retrieve(query: str, k: int = 3, context: str = "") -> list[dict]:
-    return rag.retrieve(KNOWLEDGE_DIR, query, k=k, context=context)
+def retrieve(query: str, k: int = 3, context: str = "", context_weight: float = 0.5) -> list[dict]:
+    return rag.retrieve(KNOWLEDGE_DIR, query, k=k, context=context, context_weight=context_weight)
 
 
 def load_passages() -> tuple[dict, ...]:
@@ -90,26 +91,53 @@ BRIEFING_QUESTION = (
 )
 
 
+# What the numbers cannot tell the store manager, by situation. Saying it out loud is what
+# makes people trust the rest of the briefing.
+UNKNOWNS = {
+    "stockout": "The forecast cannot see a competitor's promotion or tomorrow's weather; "
+                "check the shelf at 10:00 before ordering more.",
+    "watch": "The risk is moderate; confirm the next delivery with the supplier before acting.",
+    "waste": "The model assumes oldest-first selling; if the batch is spread over several "
+             "displays, waste may be higher.",
+    "ok": "Nothing to do; the forecast covers this week.",
+}
+
+
+def template_briefing(item: dict, base: dict | None = None) -> str:
+    """The 05:30 briefing without a language model: what, why, do, and what we don't know.
+
+    Same structure the LLM is asked for, built only from the snapshot and cited passages, so
+    it is always available and always correct; the LLM only makes it read more naturally.
+    """
+    base = base or recommend(item)
+    lines = [situation(item)]
+    if base.get("why"):
+        lines.append(f"Why: {base['why']} [1]")
+    for step in base["steps"][:3]:
+        lines.append(f"Do: {step['text']}" + (f" [{step['ref']}]" if step["ref"] else ""))
+    lines.append(f"Watch out: {UNKNOWNS[item['status']]}")
+    return "\n\n".join(lines)
+
+
 def ai_briefing(item: dict) -> dict:
-    """One generated briefing, grounded in the model output and the cited passages.
+    """The briefing for one store-product: written by the LLM when it passes the guardrails.
 
     The answer is only returned as ``llm`` when it cites real passages and uses no figure
-    that was not in the context; otherwise the caller gets the deterministic briefing.
+    that was not in the context; otherwise the caller gets the template briefing and the reason.
     """
     base = recommend(item)
+    fallback = {"answer": template_briefing(item, base), "sources": base["sources"],
+                "endpoint": rag.llm_endpoint() or None}
     context = _context_block(item, base["sources"], base["steps"])
     answer = rag.call_llm(SYSTEM_PROMPT, context, BRIEFING_QUESTION)
     if not answer:
-        reason = "no endpoint configured" if not rag.llm_endpoint() else "endpoint call failed"
-        return {"mode": "offline", "reason": reason, "sources": base["sources"],
-                "answer": None, "endpoint": rag.llm_endpoint() or None}
+        reason = "no model endpoint connected" if not rag.llm_endpoint() else "endpoint call failed"
+        return fallback | {"mode": "template", "reason": reason}
     checks = rag.check_grounding(answer, len(base["sources"]), context)
     if not checks["passed"]:
-        return {"mode": "offline", "reason": "guardrail: " + (
-            f"invented figures {checks['invented_numbers']}" if checks["invented_numbers"]
-            else "missing or invalid citations"),
-                "sources": base["sources"], "answer": None, "checks": checks,
-                "endpoint": rag.llm_endpoint()}
+        return fallback | {"mode": "template", "checks": checks, "reason": "guardrail: " + (
+            f"the model used figures not in the data ({', '.join(checks['invented_numbers'])})"
+            if checks["invented_numbers"] else "the model did not cite its sources")}
     return {"mode": "llm", "answer": answer, "sources": base["sources"], "checks": checks,
             "endpoint": rag.llm_endpoint()}
 
@@ -147,19 +175,89 @@ def recommend(item: dict) -> dict:
             "mode": "offline"}
 
 
+# Questions about counts, totals and trends across stores are Genie's job (text-to-SQL over the
+# Gold tables), not the copilot's (answers from documents for one decision).
+_NUMBERS_QUESTION = re.compile(
+    r"\b(how many|how much|total|sum|average|trend|compare|ranking|rank|top \d+|last (week|month|"
+    r"quarter|year)|per store|by store|by category|which stores|percentage of)\b", re.I)
+
+
+# "Why is this happening / what should I do" is the briefing's job for the selected item.
+_ABOUT_THIS_DECISION = re.compile(
+    r"^\s*(why\b|what should (i|we) do|what do (i|we) do|what to do|summari[sz]e|explain this)", re.I)
+
+
+# Keyword search does not know that "instead" means "substitute". Offline, a short domain
+# glossary bridges that; on Databricks, Vector Search embeddings do it without a list.
+_GLOSSARY = (
+    (re.compile(r"\b(instead|replace|replacement|swap|substitut\w*)\b", re.I), "substitutes for"),
+    (re.compile(r"\b(another|other|alternative|backup|second) suppl", re.I), "approved alternative"),
+    (re.compile(r"\b(happened before|last time|before|learn\w*|incident)\b", re.I),
+     "lessons learned week root cause"),
+    (re.compile(r"\b(throw away|waste|bin|discount|mark ?down)\b", re.I), "markdown ladder"),
+)
+
+
+def expand(question: str) -> str:
+    return " ".join([question] + [terms for pattern, terms in _GLOSSARY if pattern.search(question)])
+
+
+def is_numbers_question(question: str) -> bool:
+    return bool(_NUMBERS_QUESTION.search(question))
+
+
+_PRODUCT_WORDS = ("strawberr", "avocado", "banana", "milk", "yoghurt", "dairy", "sourdough",
+                  "bakery", "bread", "chicken", "meat", "tomato", "lettuce", "produce")
+
+
+def _names_product(section: str) -> bool:
+    return any(w in section.lower() for w in _PRODUCT_WORDS)
+
+
+def _mentions_item(item: dict | None):
+    """Section title matcher for the selected product, its category and its supplier."""
+    if not item:
+        return lambda section: False
+    words = [w for w in short_name(item["product_name"]).split() if len(w) > 3]
+    words += [item["category"].lower()]
+    words += [w for w in str(item.get("supplier_name") or "").lower().split() if len(w) > 3][:1]
+    stems = [w.rstrip("s").rstrip("ie") if w.endswith("ies") else w.rstrip("s") for w in words]
+    return lambda section: any(stem in section.lower() for stem in stems)
+
+
 def ask(question: str, item: dict | None) -> dict:
-    """Free-text question, grounded in the selected store-product when there is one."""
+    """Follow-up question about the selected decision, answered from supplier knowledge."""
     question = question.strip()[:500]
-    context = short_name(item["product_name"]) if item else ""
-    passages = retrieve(question, k=3, context=context)
-    context = _context_block(item, passages) if item else ""
-    llm = rag.call_llm(SYSTEM_PROMPT, context, question) if item else None
-    if llm and rag.check_grounding(llm, len(passages), context)["passed"]:
+    if is_numbers_question(question):
+        return {"mode": "route", "sources": [],
+                "answer": "That is a numbers question, so Genie answers it with SQL on the same "
+                          "Gold tables. I answer from the supplier documents."}
+    if item and _ABOUT_THIS_DECISION.search(question):
+        base = recommend(item)
+        return {"answer": template_briefing(item, base), "sources": base["sources"],
+                "mode": "briefing"}
+    # Relevance is judged on the question alone, so the selected product cannot drag in
+    # passages the question is not about. The product then decides the order, and a
+    # section about a different product is dropped (no Huelva strawberries for bread).
+    query = expand(question)
+    ranked = retrieve(query, k=8)
+    top = ranked[0]["score"] if ranked else 0
+    mine = _mentions_item(item)
+    passages = [p for p in ranked
+                if p["score"] >= 0.6 * top or (mine(p["section"]) and p["score"] >= 0.3 * top)]
+    if item:
+        passages = [p for p in passages if mine(p["section"]) or not _names_product(p["section"])]
+        # Near-ties go to the selected product: "substitutes?" means substitutes for this one.
+        passages.sort(key=lambda p: (not (mine(p["section"]) and p["score"] >= 0.75 * top), -p["score"]))
+    passages = passages[:3]
+    prompt_context = _context_block(item, passages) if item else ""
+    llm = rag.call_llm(SYSTEM_PROMPT, prompt_context, question) if item and passages else None
+    if llm and rag.check_grounding(llm, len(passages), prompt_context)["passed"]:
         return {"answer": llm, "sources": passages, "mode": "llm"}
     if not passages:
-        return {"answer": "I could not find this in the supplier knowledge base. Try asking about "
-                          "a supplier, a substitute, markdowns or transfers.",
+        about = f" for {short_name(item['product_name'])}" if item else ""
+        return {"answer": f"The supplier documents do not cover this{about}, so I will not guess.",
                 "sources": [], "mode": "offline"}
-    lines = [f"{rag.first_sentences(p['text'])} [{i}]" for i, p in enumerate(passages, start=1)]
-    lead = f"{situation(item)}\n\n" if item else ""
-    return {"answer": lead + "\n\n".join(lines), "sources": passages, "mode": "offline"}
+    lines = [f"{rag.best_sentences(p['text'], query)} [{i}]"
+             for i, p in enumerate(passages, start=1)]
+    return {"answer": "\n\n".join(lines), "sources": passages, "mode": "offline"}

@@ -58,29 +58,90 @@
     });
   };
 
+  const escape = (text) => String(text ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+  const paragraphs = (text) => escape(text).split(/\n\n+/).map((p) => `<p>${p}</p>`).join("");
+  const sourceList = (sources) => {
+    const items = (sources || []).map((s, i) => `<li>[${i + 1}] <strong>${escape(s.section)}</strong> · ${escape(s.title)}</li>`).join("");
+    return items ? `<ol class="answer-sources">${items}</ol>` : "";
+  };
+
+  // What produced the answer, in a few words.
+  const modeTag = (data) => ({
+    llm: `<p class="ai-tag">AI draft · ${escape(data.endpoint || "model endpoint")} · checked against the sources</p>`,
+    template: '<p class="ai-tag ai-tag-offline">Template draft · no model connected</p>',
+    briefing: '<p class="ai-tag">Summary of this decision</p>',
+    route: '<p class="route-tag">Numbers question → Genie</p>',
+    offline: '<p class="ai-tag ai-tag-offline">From the supplier documents</p>',
+  })[data.mode] || "";
+
+  // Thumbs up or down, so bad answers become evaluation questions.
+  const feedback = (kind, item, question, data) => {
+    if (data.mode === "route" || !(data.sources || []).length) return "";
+    const wrap = document.createElement("div");
+    wrap.className = "feedback";
+    wrap.innerHTML = 'Useful? <button type="button" data-vote="up" aria-pressed="false">👍</button><button type="button" data-vote="down" aria-pressed="false">👎</button>';
+    wrap.querySelectorAll("button").forEach((button) => {
+      button.addEventListener("click", async () => {
+        wrap.querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", String(b === button)));
+        try {
+          await fetch("/api/feedback", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ kind, item, question, vote: button.dataset.vote, mode: data.mode,
+                                   sources: (data.sources || []).map((s) => s.section) }),
+          });
+        } catch (error) { /* feedback is best effort */ }
+      });
+    });
+    return wrap;
+  };
+
+  const render = (out, kind, item, question, data, genie) => {
+    const genieLink = data.mode === "route" && genie
+      ? `<a class="button button-small button-secondary" href="${escape(genie)}" target="_blank" rel="noopener">Open in Genie ↗</a>` : "";
+    const to = kind === "briefing" && out.dataset.to ? `<p class="draft-to">To: ${escape(out.dataset.to)}</p>` : "";
+    const sources = kind === "briefing" ? "" : sourceList(data.sources);  // the page lists the briefing's sources
+    out.innerHTML = `${modeTag(data)}${to}${paragraphs(data.answer)}${genieLink}${sources}`;
+    const votes = feedback(kind, item, question, data);
+    if (!votes) return;
+    if (kind === "briefing" && navigator.clipboard) {
+      const copy = document.createElement("button");
+      copy.type = "button";
+      copy.className = "text-button";
+      copy.textContent = "Copy";
+      copy.addEventListener("click", async () => {
+        await navigator.clipboard.writeText(data.answer);
+        copy.textContent = "Copied";
+      });
+      votes.prepend(copy);
+    }
+    out.appendChild(votes);
+  };
+
+  const post = async (url, payload) => {
+    const response = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || "Request failed");
+    return data;
+  };
+
   const bindAsk = () => {
     const form = document.querySelector("#ask-form");
     if (!form) return;
     const input = form.querySelector("#ask-input");
     const answer = form.querySelector("#ask-answer");
 
-    const escape = (text) => text.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
-
     const submit = async (question) => {
       if (!question.trim()) return;
       answer.hidden = false;
-      answer.innerHTML = '<p class="muted">Searching supplier knowledge…</p>';
+      answer.innerHTML = '<p class="muted">Searching supplier documents…</p>';
       try {
-        const response = await fetch("/api/ask", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ question, item: form.dataset.item, approved: form.dataset.approved || "" }),
-        });
-        const data = await response.json();
-        if (!response.ok) throw new Error(data.error || "Request failed");
-        const paragraphs = escape(data.answer).split(/\n\n+/).map((p) => `<p>${p}</p>`).join("");
-        const sources = data.sources.map((s, i) => `<li>[${i + 1}] <strong>${escape(s.section)}</strong> · ${escape(s.title)}</li>`).join("");
-        answer.innerHTML = `${paragraphs}${sources ? `<ol class="answer-sources">${sources}</ol>` : ""}`;
+        const data = await post("/api/ask", { question, item: form.dataset.item, approved: form.dataset.approved || "" });
+        render(answer, "ask", form.dataset.item, question, data, form.dataset.genie);
       } catch (error) {
         answer.innerHTML = `<p class="muted">${escape(error.message)}</p>`;
       }
@@ -103,26 +164,14 @@
     if (!box) return;
     const button = box.querySelector("#ai-briefing-button");
     const out = box.querySelector("#ai-briefing-answer");
-    const escape = (text) => String(text).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
 
     button.addEventListener("click", async () => {
       button.disabled = true;
       out.hidden = false;
-      out.innerHTML = '<p class="muted">Calling the model endpoint…</p>';
+      out.innerHTML = '<p class="muted">Drafting…</p>';
       try {
-        const response = await fetch("/api/briefing", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ item: box.dataset.item, approved: box.dataset.approved || "" }),
-        });
-        const data = await response.json();
-        if (!response.ok) throw new Error(data.error || "Request failed");
-        const paragraphs = escape(data.answer).split(/\n\n+/).map((p) => `<p>${p}</p>`).join("");
-        const sources = (data.sources || []).map((s, i) => `<li>[${i + 1}] <strong>${escape(s.section)}</strong> · ${escape(s.title)}</li>`).join("");
-        const tag = data.mode === "llm"
-          ? `<p class="ai-tag">Live model: ${escape(data.endpoint || "serving endpoint")} · guardrail checks passed</p>`
-          : `<p class="ai-tag ai-tag-offline">Offline fallback (${escape(data.reason || "no endpoint")}): assembled from passages, no model call</p>`;
-        out.innerHTML = `${tag}${paragraphs}${sources ? `<ol class="answer-sources">${sources}</ol>` : ""}`;
+        const data = await post("/api/briefing", { item: box.dataset.item, approved: box.dataset.approved || "" });
+        render(out, "briefing", box.dataset.item, "", data);
       } catch (error) {
         out.innerHTML = `<p class="muted">${escape(error.message)}</p>`;
       } finally {

@@ -21,9 +21,9 @@ def test_customer_story_has_five_slides():
 
     assert response.status_code == 200
     assert response.data.count(b"data-slide") == 5
-    assert b"Empty shelves in Amsterdam." in response.data
-    assert b"Unity Catalog governance" in response.data
-    assert b"30 days to prove it" in response.data
+    assert b"Shortage in Amsterdam." in response.data
+    assert b"One set of rules" in response.data
+    assert b"Prove it in 30 days" in response.data
     assert b'class="deck-stage"' in response.data
     assert b"Open the live copilot" in response.data
     assert b"Download HTML" in response.data

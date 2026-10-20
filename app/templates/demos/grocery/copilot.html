@@ -12,179 +12,153 @@
       {% set active = "home" %}
       {% include "_topbar.html" %}
 
-      <main class="main-content">
-        <section class="page-heading">
+      <main class="main-content plan">
+        <!-- Who it is for and what to do, in the heading itself. -->
+        <section class="plan-head">
           <div>
-            <p class="eyebrow">GROCERY INVENTORY COPILOT</p>
-            <h1>Today's shelf risks, and what to do.</h1>
-            <p class="subheading">{{ snapshot.as_of|day }}, 05:30 · {{ snapshot.quality.store_products }} store-products across 4 stores · next 7 days</p>
+            <p class="eyebrow">FRESH PLANNING · 4 STORES · ORDERS CLOSE 12:00</p>
+            <h1>Good morning. {{ at_risk|length }} shelves need a decision today.</h1>
+            <p class="subheading">{{ snapshot.as_of|day }} · data as of 05:30 · next 7 days</p>
           </div>
           <div class="heading-actions">
-            <div class="data-badge">
-              <span class="badge-dot"></span>
-              {{ snapshot.source }}
-            </div>
-            <a class="button button-secondary" href="{{ reset_url }}" {% if not approved %}aria-disabled="true"{% endif %}>Reset demo</a>
+            <span class="data-badge"><span class="badge-dot"></span>{{ snapshot.source }}</span>
+            {% if approved %}<a class="button button-secondary" href="{{ reset_url }}">Reset demo</a>{% endif %}
           </div>
+        </section>
+
+        <!-- The planning manager's view: the week in four numbers. -->
+        <section class="kpis" aria-label="This week">
+          {% set before = impact.before if impact else none %}
+          <div class="kpi kpi-hot">
+            <span>Value at risk</span>
+            <strong>€{{ "{:,.0f}".format(impact.after.value_at_risk if impact else totals.value_at_risk) }}</strong>
+            {% if impact %}<small>was €{{ "{:,.0f}".format(before.value_at_risk) }}</small>{% else %}<small>lost sales + waste, 7 days</small>{% endif %}
+          </div>
+          <div class="kpi">
+            <span>Likely run-outs</span>
+            <strong>{{ impact.after.stockouts if impact else totals.stockouts }}</strong>
+            {% if impact %}<small>was {{ before.stockouts }}</small>{% endif %}
+          </div>
+          <div class="kpi">
+            <span>Waste risks</span>
+            <strong>{{ impact.after.waste if impact else totals.waste }}</strong>
+            {% if impact %}<small>was {{ before.waste }}</small>{% endif %}
+          </div>
+          <a class="kpi kpi-link" href="{{ url_for('accuracy') }}">
+            <span>Forecast error</span>
+            <strong>{{ "{:.0f}".format(snapshot.backtest.model_wape) }}%</strong>
+            <small>vs {{ "{:.0f}".format(snapshot.backtest.current_wape) }}% today · see accuracy →</small>
+          </a>
+          {% if genie_url %}
+            <a class="kpi kpi-genie" href="{{ genie_url }}" target="_blank" rel="noopener">
+              <span>Any other number</span>
+              <strong>Ask Genie ↗</strong>
+              <small>across stores and weeks</small>
+            </a>
+          {% endif %}
         </section>
 
         {% if impact %}
-          <section class="panel impact-panel" aria-label="Simulated impact of approved actions">
-            <div class="panel-heading">
-              <div>
-                <h2>Simulated impact of {{ approved|length }} approved action{{ "" if approved|length == 1 else "s" }}</h2>
-                <p>Recalculated on synthetic data. Nothing is sent to a store or supplier, and these are modelled changes, not realised savings.</p>
-              </div>
-              <a class="button button-secondary" href="{{ reset_url }}">Reset demo</a>
-            </div>
-            <ul class="approved-list">
-              {% for label in approved_labels %}<li>{{ label }}</li>{% endfor %}
-            </ul>
-            <div class="impact-grid">
-              <div><span>Value at risk</span><strong>€{{ "{:,.0f}".format(impact.before.value_at_risk) }} → €{{ "{:,.0f}".format(impact.after.value_at_risk) }}</strong></div>
-              <div><span>Likely stockouts</span><strong>{{ impact.before.stockouts }} → {{ impact.after.stockouts }}</strong></div>
-              <div><span>Waste risks</span><strong>{{ impact.before.waste }} → {{ impact.after.waste }}</strong></div>
-              <div><span>Action cost (modelled)</span><strong>€{{ "{:,.0f}".format(impact.action_cost_eur) }}</strong></div>
-              <div class="impact-net"><span>Modelled net change</span><strong>€{{ "{:,.0f}".format(impact.net_eur) }}</strong></div>
-            </div>
-          </section>
+          <p class="impact-line">
+            <b>✓ {{ approved|length }} action{{ "" if approved|length == 1 else "s" }} approved</b>
+            · modelled net €{{ "{:,.0f}".format(impact.net_eur) }} after €{{ "{:,.0f}".format(impact.action_cost_eur) }} cost
+            · simulated, nothing sent to stores or suppliers
+            · <a href="{{ reset_url }}">undo all</a>
+          </p>
         {% endif %}
 
-        <!-- The four layers, left to right, as one flow. -->
-        <section class="layer-flow" aria-label="From source data to decision">
-          <article class="layer">
-            <p class="layer-step">1 · ONE VERSION OF THE TRUTH</p>
-            <h2>Governed data</h2>
-            <ul class="source-chips">
-              <li><b>Postgres</b> sales &amp; promos</li>
-              <li><b>MySQL</b> store stock</li>
-              <li><b>Supplier portal</b> deliveries</li>
-              <li><b>Documents</b> supplier knowledge</li>
+        <div class="plan-grid">
+          <!-- Today's decisions, worst first. -->
+          <section class="panel queue" aria-label="Today's decisions">
+            <h2>Today's decisions</h2>
+            <ul class="queue-list">
+              {% for row in queue %}
+                {% set selected = row.store_code == item.store_code and row.sku == item.sku %}
+                <li>
+                  <a class="{% if selected %}selected{% endif %}" href="{{ url_for('home', item=row.store_code ~ ':' ~ row.sku, approved=approved_param) }}" {% if selected %}aria-current="true"{% endif %}>
+                    <span class="queue-name"><strong>{{ row.product_name }}</strong><small>{{ row.store_name }}</small></span>
+                    {% if row.status == "stockout" %}
+                      <span class="chip chip-red">Out {{ row.stockout_date|day }}</span>
+                    {% elif row.status == "ok" %}
+                      <span class="chip chip-green">✓ Handled</span>
+                    {% else %}
+                      <span class="chip chip-amber">{{ "{:.0f}".format(row.waste_units) }} to waste</span>
+                    {% endif %}
+                    <span class="queue-eur">€{{ "{:,.0f}".format(row.value_at_risk_eur) }}</span>
+                  </a>
+                </li>
+              {% endfor %}
             </ul>
-            <p class="layer-note">Joined on <strong>store × product</strong> · {{ snapshot.quality.pos_quarantined }} bad rows quarantined · {{ snapshot.quality.inventory_keys_standardized }} store codes fixed</p>
-          </article>
-          <i class="layer-arrow" aria-hidden="true">→</i>
-          <article class="layer">
-            <p class="layer-step">2 · PREDICT</p>
-            <h2>Demand and shortage</h2>
-            <p class="layer-big">{{ "{:.0f}".format(snapshot.backtest.model_wape) }}%<span> forecast error</span></p>
-            <p class="layer-note">vs {{ "{:.0f}".format(snapshot.backtest.current_wape) }}% with today's "same as last week" method, on the last {{ snapshot.backtest.holdout_days }} days the model never saw</p>
-          </article>
-          <i class="layer-arrow" aria-hidden="true">→</i>
-          <article class="layer">
-            <p class="layer-step">3 · EXPLAIN</p>
-            <h2>Supplier knowledge</h2>
-            <p class="layer-big">{{ passages }}<span> passages</span></p>
-            <p class="layer-note">Agreements, grower updates, policies and past incidents, searched and cited in every answer</p>
-          </article>
-          <i class="layer-arrow" aria-hidden="true">→</i>
-          <article class="layer layer-hot">
-            <p class="layer-step">4 · DECIDE</p>
-            <h2>Actions ready</h2>
-            <p class="layer-big">€{{ "{:,.0f}".format(totals.value_at_risk) }}<span> modelled at risk</span></p>
-            <p class="layer-note">{{ totals.stockouts }} likely stockouts · {{ totals.waste }} waste risks · {{ totals.actions }} recommended actions. Exposure estimate (lost sales at price plus waste at cost), not a savings forecast.</p>
-          </article>
-        </section>
-
-        <div class="copilot-grid">
-          <section class="panel risk-panel" aria-label="Store-products at risk">
-            <div class="panel-heading">
-              <div>
-                <h2>Needs attention this week</h2>
-                <p>Sorted by sales and stock value at risk.</p>
-              </div>
-            </div>
-            <div class="table-scroll">
-              <table class="risk-table">
-                <thead>
-                  <tr><th>Store · product</th><th>Risk</th><th>Cover</th><th>At risk</th></tr>
-                </thead>
-                <tbody>
-                  {% for row in at_risk %}
-                    {% set selected = row.store_code == item.store_code and row.sku == item.sku %}
-                    <tr class="{% if selected %}selected{% endif %}">
-                      <td>
-                        <a href="{{ url_for('home', item=row.store_code ~ ':' ~ row.sku, approved=approved_param) }}" {% if selected %}aria-current="true"{% endif %}>
-                          <strong>{{ row.product_name }}</strong>
-                          <span>{{ row.store_name }}</span>
-                        </a>
-                      </td>
-                      <td>
-                        {% if row.status == "stockout" %}
-                          <span class="chip chip-red">Out {{ row.stockout_date|day }}</span>
-                        {% elif row.status == "waste" %}
-                          <span class="chip chip-amber">Waste {{ "{:.0f}".format(row.waste_units) }} units</span>
-                        {% else %}
-                          <span class="chip">Watch</span>
-                        {% endif %}
-                      </td>
-                      <td>{{ row.days_of_cover }} d</td>
-                      <td>€{{ "{:,.0f}".format(row.value_at_risk_eur) }}</td>
-                    </tr>
-                  {% endfor %}
-                </tbody>
-              </table>
-            </div>
           </section>
 
-          <section class="panel detail-panel" aria-label="Copilot briefing">
+          <!-- One decision: what, why, do. -->
+          <section class="panel decision" aria-label="Selected decision">
             <p class="eyebrow">{{ item.store_name|upper }} · {{ item.product_name|upper }}</p>
-            <h2 class="briefing-title">{{ briefing.situation }}</h2>
+            {% if item.status == "stockout" %}
+              <h2 class="decision-title">Runs out {{ item.stockout_date|day }}</h2>
+              <p class="decision-meta">{{ "over 95" if item.stockout_probability >= 0.95 else "{:.0f}".format(item.stockout_probability * 100) }}% likely to run out · {{ item.days_of_cover }} days of cover{% if item.promo_days %} · promotion {{ item.promo_days }} of 7 days{% endif %}{% if item.next_delivery_fill_pct is not none and item.next_delivery_fill_pct < 100 %} · supplier confirmed {{ item.next_delivery_fill_pct }}%{% endif %}</p>
+            {% elif item.status == "waste" %}
+              <h2 class="decision-title">{{ "{:.0f}".format(item.waste_units) }} units will expire unsold</h2>
+              <p class="decision-meta">{{ "{:.0f}".format(item.on_hand_units) }} on hand · oldest batch expires in {{ item.days_to_expiry }} days · €{{ "{:,.0f}".format(item.waste_eur) }} at cost</p>
+            {% elif briefing.steps|selectattr("approved")|list %}
+              <h2 class="decision-title">Handled</h2>
+              <p class="decision-meta">No run-out or waste expected after the approved action · {{ item.days_of_cover }} days of cover</p>
+            {% else %}
+              <h2 class="decision-title">On track</h2>
+              <p class="decision-meta">{{ item.days_of_cover }} days of cover · no action needed</p>
+            {% endif %}
 
             {% if projection %}
-              <div class="chart-legend" aria-label="Chart legend">
-                <span><i class="legend-swatch forecast"></i>Forecast demand</span>
-                <span><i class="legend-swatch stock"></i>Projected stock (below 0 = empty shelf)</span>
-                <span><i class="legend-swatch delivery"></i>Confirmed delivery</span>
-                <span><i class="legend-swatch promo"></i>Promotion</span>
-              </div>
               <svg id="projection-chart" class="projection-chart" viewBox="0 0 640 220" role="img"
                    aria-label="Seven-day forecast demand, deliveries and projected stock"></svg>
               <script id="projection-data" type="application/json">{{ projection|tojson }}</script>
+              <div class="chart-legend" aria-label="Chart legend">
+                <span><i class="legend-swatch forecast"></i>Demand</span>
+                <span><i class="legend-swatch stock"></i>Stock (below 0 = empty shelf)</span>
+                <span><i class="legend-swatch delivery"></i>Confirmed delivery</span>
+                <span><i class="legend-swatch promo"></i>Promotion</span>
+              </div>
             {% endif %}
-
-            <dl class="facts">
-              <div><dt>On hand</dt><dd>{{ "{:.0f}".format(item.on_hand_units) }} <small>MySQL stock</small></dd></div>
-              <div><dt>Forecast, 7 days</dt><dd>{{ "{:.0f}".format(item.forecast_7d_units) }} <small>model</small></dd></div>
-              <div><dt>Next delivery</dt><dd>{{ item.next_delivery_date|day }}{% if item.next_delivery_fill_pct is not none %} · {{ item.next_delivery_fill_pct }}%{% endif %} <small>supplier portal</small></dd></div>
-              <div><dt>Oldest batch expires</dt><dd>{{ item.days_to_expiry }} days <small>MySQL stock</small></dd></div>
-            </dl>
 
             {% if briefing.why %}
-              <blockquote class="why"><span>Why this is happening</span>{{ briefing.why }} <cite>[1]</cite></blockquote>
+              <div class="why">
+                <span>Why</span>
+                <p>{{ briefing.why }}</p>
+                {% if briefing.sources %}<small class="source-chip" title="{{ briefing.sources[0].text }}">{{ briefing.sources[0].title }}</small>{% endif %}
+              </div>
             {% endif %}
 
-            <div class="ai-briefing" id="ai-briefing" data-item="{{ item.store_code }}:{{ item.sku }}" data-approved="{{ approved_param or '' }}">
-              <button class="button button-secondary" type="button" id="ai-briefing-button">Generate AI briefing</button>
-              <p class="muted ai-note">One live call to a Databricks model-serving endpoint. It sees only the risk numbers and passages below, and is rejected if it cites a missing source or invents a figure.</p>
-              <div class="llm-answer" id="ai-briefing-answer" aria-live="polite" hidden></div>
-            </div>
-
             {% if briefing.steps %}
-              <h3 class="section-label">Recommended actions</h3>
+              <h3 class="section-label">Do this</h3>
               <ol class="actions">
                 {% for step in briefing.steps %}
+                  {% set source = briefing.sources[step.ref - 1] if step.ref and step.ref <= briefing.sources|length else none %}
                   <li class="action-{{ step.kind }}{% if step.approved %} is-approved{% endif %}">
-                    <span class="action-text">{{ step.text }}{% if step.ref %} <cite>[{{ step.ref }}]</cite>{% endif %}</span>
+                    <span class="action-text">{{ step.text }}{% if source %} <cite title="{{ source.section }} · {{ source.title }}">{{ step.ref }}</cite>{% endif %}</span>
                     {% if step.approvable %}
                       <span class="action-controls">
-                        {% if step.cost_eur and not step.approved %}<small>~€{{ "{:,.0f}".format(step.cost_eur) }}</small>{% endif %}
                         {% if step.approved %}
                           <a class="button button-small button-secondary" href="{{ step.toggle_url }}">✓ Approved · undo</a>
                         {% else %}
-                          <a class="button button-small button-primary" href="{{ step.toggle_url }}">{{ "Approve transfer" if step.kind in ("transfer", "transfer_out") else "Approve order" }}</a>
+                          {% if step.cost_eur %}<small>~€{{ "{:,.0f}".format(step.cost_eur) }}</small>{% endif %}
+                          <a class="button button-small button-primary" href="{{ step.toggle_url }}">Approve</a>
                         {% endif %}
                       </span>
                     {% endif %}
                   </li>
                 {% endfor %}
               </ol>
-              <p class="muted action-note">Approve is simulated: it recalculates the forecast risk here and sends nothing to stores or suppliers.</p>
             {% endif %}
+
+            <!-- The AI briefing has one job: the hand-over note to the store. -->
+            <div class="handover" id="ai-briefing" data-item="{{ item.store_code }}:{{ item.sku }}" data-approved="{{ approved_param or '' }}">
+              <button class="button button-secondary" type="button" id="ai-briefing-button">✎ Draft message to the store</button>
+              <div class="draft" id="ai-briefing-answer" data-to="store manager, {{ item.store_name }}" aria-live="polite" hidden></div>
+            </div>
 
             {% if briefing.sources %}
               <details class="sources">
-                <summary>Sources <span>{{ briefing.sources|length }}</span></summary>
+                <summary>{{ briefing.sources|length }} sources behind this decision</summary>
                 <ol>
                   {% for source in briefing.sources %}
                     <li><strong>{{ source.section }}</strong> · {{ source.title }}<p>{{ source.text }}</p></li>
@@ -193,30 +167,28 @@
               </details>
             {% endif %}
 
-            <form class="ask" id="ask-form" data-item="{{ item.store_code }}:{{ item.sku }}" data-approved="{{ approved_param or '' }}">
+            <!-- Follow-ups go to the documents; numbers questions are handed to Genie. -->
+            <form class="ask" id="ask-form" data-item="{{ item.store_code }}:{{ item.sku }}" data-approved="{{ approved_param or '' }}" data-genie="{{ genie_url or '' }}">
+              {% set name = item.product_name|short %}
               <label for="ask-input" class="section-label">Ask the copilot</label>
               <div class="ask-row">
                 <input id="ask-input" name="question" type="text" autocomplete="off"
-                       placeholder="e.g. Why is the supplier short this week?">
+                       placeholder="Ask about suppliers, substitutes, policies or past incidents">
                 <button class="button button-primary" type="submit">Ask</button>
               </div>
-              {% set name = item.product_name|short %}
               <div class="suggestions">
-                <button type="button" data-q="Is there an alternative supplier for {{ name }}?">Alternative supplier?</button>
+                <button type="button" data-q="Is there an alternative supplier for {{ name }}?">Other supplier?</button>
                 <button type="button" data-q="Which substitutes can go on the shelf instead of {{ name }}?">Substitutes?</button>
                 <button type="button" data-q="Has this happened with {{ name }} before, and what did we learn?">Happened before?</button>
                 <button type="button" data-q="What are the rules for store transfers?">Transfer rules?</button>
               </div>
               <div class="answer" id="ask-answer" aria-live="polite" hidden></div>
             </form>
-            <p class="mode-note">
-              Searches and the action list are assembled from the retrieved passages, so every line has a source. The AI briefing and, when an endpoint is configured, typed answers come from a Databricks model-serving endpoint that is given the same numbers and passages; answers that fail the citation or figure check fall back to passages only.
-            </p>
           </section>
         </div>
 
         <details class="data-details lineage">
-          <summary>How the data is governed <span>for the data team</span></summary>
+          <summary>Where the numbers come from <span>4 sources · {{ snapshot.quality.pos_quarantined }} bad rows quarantined · {{ snapshot.quality.inventory_keys_standardized }} store codes fixed · {{ passages }} supplier passages</span></summary>
           <div class="table-scroll">
             <table>
               <thead><tr><th>Source</th><th>Bronze (raw, as delivered)</th><th>Silver (conformed)</th><th>Checks</th></tr></thead>
@@ -229,12 +201,12 @@
               </tbody>
             </table>
           </div>
-          <p class="lineage-note">Gold tables <code>gold_store_product_risk</code> and <code>gold_store_product_projection</code> are written by the forecast job; in the pilot design Unity Catalog would add lineage from each Gold number to its source rows, plus row filters (store managers see their own store) and column masks (supplier costs) to be configured with the customer. These controls are not enabled in this prototype.</p>
+          <p class="lineage-note">Risk, forecast and actions come from <code>gold_store_product_risk</code> and <code>gold_store_product_projection</code>, written by the forecast job; the AI only drafts and answers from the cited documents. In the pilot design Unity Catalog adds lineage, row filters (store managers see their own store) and column masks (supplier costs); these are not enabled in this prototype.</p>
         </details>
 
         <footer class="disclaimer">
           <span class="disclaimer-mark">i</span>
-          <p><strong>Demonstration only.</strong> Groenhof Markets, its suppliers and all values are fictional and synthetic. Forecast accuracy is measured on generated data, not a customer result.</p>
+          <p><strong>Demonstration only.</strong> Groenhof Markets, its suppliers and all values are fictional and synthetic.</p>
         </footer>
       </main>
     </div>

@@ -1,84 +1,130 @@
-{# Grocery deck: 5 slides, included in the shared deck shell (templates/story.html). #}
-        <!-- === 01 THE PROBLEM === -->
+{# Grocery deck: 5 slides, included in the shared deck shell (templates/story.html).
+   Arc: their problem, one problem solved live, how it works, how it scales, the pilot. #}
+        <!-- === 01 THE PROBLEM AND DISCOVERY === -->
         <section class="slide s-g-problem active visible" data-slide aria-label="The problem">
           <p class="eyebrow reveal">GROENHOF MARKETS · FRESH</p>
-          <h1 class="g-title reveal" style="--d:1" data-editable>Empty shelves in Amsterdam.<br><em>Full bins in Utrecht.</em><br>Same week.</h1>
+          <h1 class="g-title reveal" style="--d:1" data-editable>Shortage in Amsterdam.<br><em>Surplus in Utrecht.</em><br>Same fresh product, same week.</h1>
+          <ul class="g-fresh reveal" style="--d:2" aria-label="Fresh products: strawberries, fish, carrots, apples, bread">
+            <li class="g-f1"><svg viewBox="0 0 64 64" aria-hidden="true"><path class="fill" d="M32 58c-12-6-20-18-20-28 0-6 5-10 11-10 4 0 7 2 9 2s5-2 9-2c6 0 11 4 11 10 0 10-8 22-20 28z"/><path d="M22 18c4 0 7 1 10 4 3-3 6-4 10-4-2-3-6-4-10-3-4-1-8 0-10 3z"/><path d="M32 15V8"/><path class="dots" d="M24 30h.01M32 28h.01M40 30h.01M28 38h.01M36 38h.01M32 46h.01"/></svg></li>
+            <li class="g-f2"><svg viewBox="0 0 64 64" aria-hidden="true"><path class="fill" d="M6 32c9-12 31-14 43 0-12 14-34 12-43 0z"/><path class="fill" d="M49 32l9-9v18z"/><path d="M24 24c3 5 3 11 0 16"/><circle cx="15" cy="30" r="1.5"/></svg></li>
+            <li class="g-f3"><svg viewBox="0 0 64 64" aria-hidden="true"><path class="fill" d="M44 22c-6-6-15-2-19 4L10 54l28-13c7-4 11-13 6-19z"/><path d="M44 22l6-12M46 24l12-3M41 20l1-12"/><path d="M26 34l4 4M19 45l3 3"/></svg></li>
+            <li class="g-f4"><svg viewBox="0 0 64 64" aria-hidden="true"><path class="fill" d="M32 20c-4-4-14-5-18 3-5 10 1 27 9 31 4 2 6 0 9 0s5 2 9 0c8-4 14-21 9-31-4-8-14-7-18-3z"/><path d="M32 20c0-6 2-10 6-12"/><path d="M34 14c4-4 10-4 12-2-2 4-8 5-12 2z"/></svg></li>
+            <li class="g-f5"><svg viewBox="0 0 64 64" aria-hidden="true"><path class="fill" d="M10 30c0-10 10-14 22-14s22 4 22 14c0 4-3 5-5 5v15H15V35c-2 0-5-1-5-5z"/><path d="M24 26v6M32 24v8M40 26v6"/></svg></li>
+          </ul>
           <div class="g-facts">
-            <article class="reveal" style="--d:2"><strong data-editable>€14M</strong><p data-editable>fresh food written off every year</p><small data-editable>3.5% of ~€400M fresh sales</small></article>
-            <article class="reveal" style="--d:3"><strong data-editable>1 in 12</strong><p data-editable>fresh products missing on a Saturday</p><small data-editable>~92% on-shelf availability</small></article>
-            <article class="reveal" style="--d:4"><strong data-editable>4</strong><p data-editable>systems, so every meeting starts with "whose number is right?"</p><small data-editable>POS · store stock · supplier portal · documents</small></article>
+            <article class="reveal" style="--d:2">
+              <b class="g-tag">SURPLUS</b><strong data-editable>€14M</strong><p data-editable>of fresh food thrown away every year</p><small data-editable>~3.5% of ~€400M fresh sales</small>
+            </article>
+            <article class="reveal" style="--d:3">
+              <b class="g-tag">SHORTAGE</b><strong data-editable>5%</strong><p data-editable>of fresh products out of stock on Saturday, the busiest day</p><small data-editable>lost sales: customers shop elsewhere</small>
+            </article>
+            <article class="reveal" style="--d:4">
+              <b class="g-tag">WHY</b><strong data-editable>Weeks</strong><p data-editable>to agree on the numbers: no single source of truth</p><small data-editable>sales · stock · supplier portal · spreadsheets · email</small>
+            </article>
           </div>
-          <p class="assume reveal" style="--d:5" data-editable>OUR ASSUMPTIONS FROM THE AE CALLS · TO VALIDATE WITH YOU NOW</p>
+          <p class="assume reveal" style="--d:5" data-editable>OUR ASSUMPTIONS · LET'S CHECK THEM WITH YOU</p>
         </section>
 
-        <!-- === 02 ARCHITECTURE === -->
-        <section class="slide s-g-arch" data-slide aria-label="Architecture">
-          <p class="eyebrow reveal">ONE PLATFORM, FOUR LAYERS</p>
-          <h2 class="title reveal" style="--d:1" data-editable>Connect once. Predict. Explain. Act.</h2>
-          <div class="body g-arch reveal" style="--d:2" role="img" aria-label="Sources flow into a governed lakehouse, a prediction layer, a knowledge layer and the copilot app">
+        <!-- === 02 THE ART OF THE POSSIBLE === -->
+        <section class="slide s-g-demo" data-slide aria-label="The art of the possible">
+          <p class="eyebrow reveal">THE ART OF THE POSSIBLE · FRESH PLANNING</p>
+          <h2 class="title reveal" style="--d:1" data-editable>One planner, one morning, five minutes.</h2>
+          <ul class="g-who reveal" style="--d:2" aria-label="Who it is for">
+            <li><b data-editable>Fresh planner</b><span data-editable>starts at 05:30, works in the app</span></li>
+            <li><b data-editable>Store manager</b><span data-editable>gets the hand-over</span></li>
+            <li><b data-editable>Planning manager</b><span data-editable>sees the week, asks Genie</span></li>
+          </ul>
+          <div class="body g-demo">
+            <article class="reveal" style="--d:3"><b>05:30</b><h3 data-editable>See the risk</h3><p data-editable>Amsterdam runs out of strawberries on Thursday, the first day of the 2+1 promotion.</p></article>
+            <article class="reveal" style="--d:4"><b>05:31</b><h3 data-editable>Understand why</h3><p data-editable>Rain in Zeeland: the grower confirms only 70% of orders. Found in the grower update, cited.</p></article>
+            <article class="reveal" style="--d:5"><b>05:35</b><h3 data-editable>Act</h3><p data-editable>Move 80 boxes from Utrecht, which would throw them away. Top up from the backup grower. Send the store a note.</p></article>
+          </div>
+          <a class="cta reveal" style="--d:6" href="{{ url_for('home') }}">Open the live copilot <span aria-hidden="true">↗</span></a>
+          <p class="g-honest reveal" style="--d:6" data-editable>Synthetic data · forecast error 10% vs 21% today, on days the model never saw</p>
+        </section>
+
+        <!-- === 03 BEHIND THE SOLUTION === -->
+        <section class="slide s-g-arch" data-slide aria-label="Behind the solution">
+          <p class="eyebrow reveal">BEHIND THE SOLUTION</p>
+          <h2 class="title reveal" style="--d:1" data-editable>What you just saw: four connected layers.</h2>
+          <div class="body g-arch reveal" style="--d:2" role="img" aria-label="Sources flow into trusted data, a prediction layer, a knowledge layer and the planner app; outcomes flow back to retrain the forecast, all under one set of rules">
             <div class="g-col">
               <p class="col-h">SOURCES</p>
-              <span>Postgres<small>sales · promotions</small></span>
-              <span>MySQL<small>store stock</small></span>
-              <span>Supplier portal<small>SaaS export</small></span>
-              <span>Documents<small>agreements · grower news</small></span>
+              <span>Checkout sales<small>sales · promotions</small></span>
+              <span>Store stock<small>stock per store</small></span>
+              <span>Supplier portal<small>daily export</small></span>
+              <span>Documents<small>supplier contracts · grower emails</small></span>
             </div>
             <i class="flow">→</i>
-            <div class="g-layer g-l1"><b>1</b><h3 data-editable>Governed data</h3><p data-editable>Bronze, Silver, Gold. One row per store × product.</p><small>LAKEFLOW CONNECT · QUALITY CHECKS</small></div>
+            <div class="g-layer g-l1"><b>1</b><h3 data-editable>Trusted data</h3><p data-editable>Cleaned and joined once.</p><em data-editable>→ one view per product, per store</em><small>LAKEFLOW CONNECT · QUALITY CHECKS</small></div>
             <i class="flow">→</i>
-            <div class="g-layer g-l2"><b>2</b><h3 data-editable>Predict</h3><p data-editable>Demand forecast, then stockout and waste risk.</p><small>MLFLOW · MODEL REGISTRY · MONITORING</small></div>
+            <div class="g-layer g-l2"><b>2</b><h3 data-editable>Predict</h3><p data-editable>Demand forecast, then run-out and waste risk.</p><em data-editable>→ which shelves are at risk, and when</em><small>MLFLOW · MODEL REGISTRY · MONITORING</small></div>
             <i class="flow">→</i>
-            <div class="g-layer g-l3"><b>3</b><h3 data-editable>Explain</h3><p data-editable>Copilot reads supplier knowledge and the risk table, then cites its sources.</p><small>VECTOR SEARCH · MODEL SERVING</small></div>
+            <div class="g-layer g-l3"><b>3</b><h3 data-editable>Explain</h3><p data-editable>Reads the risk and your supplier documents. Cites them.</p><em data-editable>→ the reason and a store hand-over</em><small>VECTOR SEARCH · MODEL SERVING</small></div>
             <i class="flow">→</i>
-            <div class="g-layer g-l4"><b>4</b><h3 data-editable>Act</h3><p data-editable>Planners and store managers get ranked actions. Leaders ask in plain English (Genie, next step).</p><small>DATABRICKS APPS · GENIE · AI/BI</small></div>
-            <div class="g-uc"><b>Unity Catalog governance</b><span>pilot design: access control, lineage and audit configured with your team</span></div>
+            <div class="g-layer g-l4"><b>4</b><h3 data-editable>Act</h3><p data-editable>Planners approve in the app. Managers ask Genie.</p><em data-editable>→ decisions, logged</em><small>DATABRICKS APPS · GENIE · AI/BI</small></div>
+            <div class="g-loop"><b data-editable>↩ Learns from what happens</b><span data-editable>approved moves and real sales retrain the forecast · planner feedback grades the AI answers</span><small>MLFLOW EVALUATION</small></div>
+            <div class="g-uc"><b>One set of rules</b><span data-editable>who sees what · quality checked at the door · every number traceable</span><small>UNITY CATALOG</small></div>
           </div>
         </section>
 
-        <!-- === 03 WHAT WE BUILT === -->
-        <section class="slide s-g-demo" data-slide aria-label="What we built">
-          <p class="eyebrow reveal">WHAT WE BUILT FOR YOU</p>
-          <h2 class="title reveal" style="--d:1" data-editable>One morning, one decision, five minutes.</h2>
-          <div class="body g-demo">
-            <article class="reveal" style="--d:2"><b>05:30</b><h3 data-editable>See the risk</h3><p data-editable>Amsterdam runs out of strawberries on Thursday, during the 2+1 promotion.</p><span>FORECAST + STOCK + DELIVERIES</span></article>
-            <article class="reveal" style="--d:3"><b>05:31</b><h3 data-editable>Understand why</h3><p data-editable>Rain in Zeeland: the grower confirms only 70% of orders. Cited from the grower update.</p><span>SUPPLIER KNOWLEDGE</span></article>
-            <article class="reveal" style="--d:4"><b>05:35</b><h3 data-editable>Act</h3><p data-editable>Move 80 punnets from Utrecht, which would waste them. Top up from Huelva. Cap the promotion.</p><span>RANKED, CITED ACTIONS</span></article>
-          </div>
-          <a class="cta reveal" style="--d:5" href="{{ url_for('home') }}">Open the live copilot <span aria-hidden="true">↗</span></a>
-          <p class="g-honest reveal" style="--d:5" data-editable>Synthetic data · forecast error 10% vs 21% today, out of sample</p>
-        </section>
-
-        <!-- === 04 VALUE === -->
-        <section class="slide s-g-value" data-slide aria-label="Business value">
-          <p class="eyebrow reveal">WHAT IT COULD BE WORTH</p>
-          <h2 class="title reveal" style="--d:1" data-editable>If fresh sales are ~€400M, a point of waste is about €4M.</h2>
-          <div class="body g-value">
-            <div class="equation reveal" style="--d:2" aria-label="400 million euro fresh sales times 1 point less waste equals 4 million euro a year">
-              <div><strong>€400M</strong><span>fresh sales</span></div><em>×</em>
-              <div><strong>1 pt</strong><span>less waste</span></div><em>=</em>
-              <div class="result"><strong>€4M</strong><span>per year, at cost</span></div>
+        <!-- === 04 FUTURE STATE AT SCALE === -->
+        <section class="slide s-g-scale" data-slide aria-label="Future state at scale">
+          <p class="eyebrow reveal">FUTURE STATE · AFTER THE PILOT</p>
+          <h2 class="title reveal" style="--d:1" data-editable>One platform for every store and every team.</h2>
+          <div class="body g-scale" role="img" aria-label="All sources flow into one platform that brings data in, keeps one trusted copy, predicts and explains, and serves planners, managers and suppliers, under one set of rules">
+            <div class="g-src reveal" style="--d:2">
+              <p class="col-h">SOURCES</p>
+              <span>Checkout sales<small>sales · promotions</small></span>
+              <span>Store stock</span>
+              <span>Supplier portal</span>
+              <span>Documents<small>supplier contracts · grower emails</small></span>
+              <span class="g-new">ERP<small>orders · finance</small></span>
+              <span class="g-new">Weather</span>
+              <span class="g-new">Loyalty</span>
             </div>
-            <ul class="g-kpis reveal" style="--d:3">
-              <li><b data-editable>Waste</b><span data-editable>3.5% → 2.5% of fresh sales (illustrative target)</span></li>
-              <li><b data-editable>Availability</b><span data-editable>92% → 95% on Saturdays (illustrative target)</span></li>
-              <li><b data-editable>Time to decide</b><span data-editable>weeks → same morning</span></li>
-            </ul>
+            <i class="flow">→</i>
+            <div class="g-platform reveal" style="--d:3">
+              <p class="col-h">ONE DATABRICKS PLATFORM</p>
+              <div class="g-band g-b1"><h3 data-editable>Bring it in</h3><div><p data-editable>Every source and store, refreshed in minutes instead of overnight.</p><small>LAKEFLOW CONNECT · STREAMING</small></div></div>
+              <div class="g-band g-b2"><h3 data-editable>One trusted copy</h3><div><p data-editable>Cleaned once, owned by a named team, used by everyone.</p><small>LAKEHOUSE · OPEN FORMATS</small></div></div>
+              <div class="g-band g-b3"><h3 data-editable>Predict and explain</h3><div><p data-editable>Forecasts for every product in every store. AI that cites your documents. Quality checked daily.</p><small>MLFLOW · MOSAIC AI · VECTOR SEARCH · MONITORING</small></div></div>
+              <div class="g-band g-b4"><h3 data-editable>Act</h3><div><p data-editable>Planner app with instant approvals, plain-language questions, dashboards, data shared with growers.</p><small>APPS · LAKEBASE · GENIE · AI/BI · DELTA SHARING</small></div></div>
+            </div>
+            <i class="flow">→</i>
+            <div class="g-users reveal" style="--d:4">
+              <p class="col-h">WHO USES IT</p>
+              <span><b data-editable>Planners</b><small data-editable>decide and approve in the app</small></span>
+              <span><b data-editable>Store managers</b><small data-editable>get the hand-over on the floor</small></span>
+              <span><b data-editable>Managers and finance</b><small data-editable>ask questions, read dashboards</small></span>
+              <span><b data-editable>Growers and suppliers</b><small data-editable>see forecasts and fill rates</small></span>
+              <span class="g-later"><b data-editable>Next, same data</b><small data-editable>promotions · markdowns · staffing · loyalty</small></span>
+            </div>
+            <div class="g-rules reveal" style="--d:5"><b data-editable>One set of rules</b><span data-editable>access per team · every number traceable to its source · full audit</span><small>UNITY CATALOG</small></div>
           </div>
-          <p class="assume reveal" style="--d:4" data-editable>ILLUSTRATIVE · WE MEASURE AGAINST YOUR OWN BASELINE IN THE PILOT, NOT OUR NUMBERS</p>
         </section>
 
-        <!-- === 05 FIRST 30 DAYS === -->
-        <section class="slide s-g-plan" data-slide aria-label="First 30 days">
+        <!-- === 05 NEXT STEPS === -->
+        <section class="slide s-g-plan" data-slide aria-label="Next steps">
           <p class="eyebrow reveal">IF YOU SAY GO</p>
-          <h2 class="title reveal" style="--d:1" data-editable>30 days to prove it on fresh produce in one region.</h2>
+          <h2 class="title reveal" style="--d:1" data-editable>Prove it in 30 days: one region, fresh produce, your own data.</h2>
           <div class="body g-plan">
-            <article class="reveal" style="--d:2"><b>WEEK 1</b><h3 data-editable>Connect</h3><p data-editable>Postgres, MySQL and the supplier portal into Unity Catalog. Access rules agreed with IT.</p></article>
-            <article class="reveal" style="--d:3"><b>WEEK 2</b><h3 data-editable>Baseline</h3><p data-editable>Today's waste, availability and forecast error, measured the same way for everyone.</p></article>
-            <article class="reveal" style="--d:4"><b>WEEK 3</b><h3 data-editable>Shadow</h3><p data-editable>Forecast and copilot run next to planners in 20 stores. Planners still decide.</p></article>
-            <article class="reveal g-gate" style="--d:5"><b>WEEK 4</b><h3 data-editable>Decide</h3><p data-editable>Scorecard against the baseline. Go, adjust, or stop.</p></article>
+            <article class="reveal" style="--d:2"><b>WEEK 1</b><h3 data-editable>Connect</h3><p data-editable>Sales, stock and the supplier portal connected. Access rules agreed with IT.</p></article>
+            <article class="reveal" style="--d:3"><b>WEEKS 2–4</b><h3 data-editable>Run alongside</h3><p data-editable>10 stores with it, 10 similar stores without. Planners still decide.</p></article>
+            <article class="reveal g-par" style="--d:4"><b>WEEK 2 · IN PARALLEL</b><h3 data-editable>Look back</h3><p data-editable>Replay last quarter on your data: what we'd have caught, and its € value.</p></article>
+            <article class="reveal g-gate" style="--d:5"><b>DAY 30</b><h3 data-editable>Decide</h3><p data-editable>One scorecard, agreed up front. Go, adjust or stop.</p></article>
           </div>
-          <div class="g-ask reveal" style="--d:6">
-            <p class="mini-title">WHAT WE NEED FROM YOU TODAY</p>
-            <ul><li data-editable>A sponsor and one fresh category manager</li><li data-editable>Read access to two databases and the portal</li><li data-editable>Agreement on the pilot scorecard</li></ul>
+          <div class="g-prove reveal" style="--d:6">
+            <p class="mini-title">WHAT YOU'LL KNOW AFTER 30 DAYS</p>
+            <ul>
+              <li><b data-editable>€ saved</b><span data-editable>on last quarter, replayed on your own data</span></li>
+              <li><b data-editable>% accepted</b><span data-editable>of recommendations your planners would act on</span></li>
+              <li><b data-editable>Same morning</b><span data-editable>from signal to decision, not a week</span></li>
+            </ul>
+            <p class="g-at-scale" data-editable>At full scale: ~€4M a year per point of fresh waste · illustrative, your baseline decides</p>
+          </div>
+          <div class="g-ask reveal" style="--d:7">
+            <p class="mini-title">TO START NEXT WEEK</p>
+            <ul><li data-editable>A sponsor and a fresh category manager</li><li data-editable>Access to sales, stock and supplier data</li><li data-editable>Agreement on how we measure success</li></ul>
           </div>
         </section>
