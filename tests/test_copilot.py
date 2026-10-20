@@ -111,3 +111,38 @@ def test_databricks_backend_reads_gold_tables(monkeypatch, snapshot):
     assert loaded["source"] == "Databricks Gold tables"
     assert loaded["items"][0]["actions"] == snapshot["items"][0]["actions"]
     assert app.test_client().get("/").status_code == 200
+
+
+def test_huelva_order_meets_minimum_and_shares_sum(snapshot):
+    from app.demos.grocery.engine import CASE_UNITS, ALT_MIN_CASES
+    orders = [a for i in snapshot["items"] for a in i["actions"] if a["kind"] == "alt_supplier"]
+    assert orders
+    by_id = {}
+    for a in orders:
+        by_id.setdefault(a["id"], []).append(a)
+    for group in by_id.values():
+        assert sum(a["units"] for a in group) >= CASE_UNITS * ALT_MIN_CASES
+
+
+def test_approving_actions_reduces_risk_and_reset_restores(snapshot):
+    from app.demos.grocery.engine import action_ids, apply_actions
+    ids = set(action_ids(snapshot))
+    assert apply_actions(snapshot, set())["impact"]["net_eur"] == 0
+    after = apply_actions(snapshot, ids)["impact"]
+    assert after["after"]["value_at_risk"] < after["before"]["value_at_risk"]
+    with pytest.raises(ValueError):
+        apply_actions(snapshot, {"bogus"})
+
+
+def test_briefing_falls_back_offline_and_rejects_bad_approval(monkeypatch):
+    monkeypatch.delenv("COPILOT_SERVING_ENDPOINT", raising=False)
+    client = app.test_client()
+    data = client.post("/api/briefing", json={"item": "AMS-01:SKU-1001"}).get_json()
+    assert data["mode"] == "offline"
+    assert client.get("/?approved=bogus").status_code == 404
+
+
+def test_grounding_check_rejects_invented_numbers():
+    from app.rag import check_grounding
+    assert not check_grounding("Order 999 units [1]", 1, "order 200 units")["passed"]
+    assert check_grounding("Order 200 units [1]", 1, "order 200 units")["passed"]

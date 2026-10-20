@@ -63,21 +63,55 @@ def situation(item: dict) -> str:
     return f"{where}: no action needed, stock covers forecast demand."
 
 
-def _context_block(item: dict, passages: list[dict]) -> str:
+def _context_block(item: dict, passages: list[dict], steps: list[dict] | None = None) -> str:
     facts = {k: item[k] for k in (
-        "store_name", "product_name", "supplier_name", "status", "stockout_probability",
+        "store_name", "product_name", "supplier_name", "status",
         "stockout_date", "on_hand_units", "days_of_cover", "forecast_7d_units", "promo_days",
         "next_delivery_date", "next_delivery_fill_pct", "waste_units", "value_at_risk_eur")}
+    facts["stockout_probability_pct"] = round(100 * item["stockout_probability"])
     numbered = "\n".join(f"[{i}] {p['title']} / {p['section']}: {p['text']}"
                          for i, p in enumerate(passages, start=1))
-    actions = "\n".join(f"- {a['text']}" for a in item.get("actions", []))
+    if steps is None:
+        steps = [{"text": a["text"], "ref": None} for a in item.get("actions", [])]
+    actions = "\n".join(f"- {s['text']}" + (f" (policy in passage [{s['ref']}])" if s["ref"] else "")
+                        for s in steps)
     return (f"Risk snapshot (from the Gold table and the forecast model):\n{json.dumps(facts)}\n\n"
             f"Candidate actions from the replenishment rules:\n{actions or '- none'}\n\n"
             f"Passages:\n{numbered}")
 
 
-def _call_llm(question: str, item: dict, passages: list[dict]) -> str | None:
-    return rag.call_llm(SYSTEM_PROMPT, _context_block(item, passages), question)
+BRIEFING_QUESTION = (
+    "Write a briefing for the store manager in at most 110 words: one sentence on what is "
+    "happening and why, then up to three short action lines using the candidate actions with "
+    "their quantities and the passage number shown next to each, then one line on what the data "
+    "cannot tell us. Say which quantity applies to this store. Copy figures exactly as "
+    "given and never calculate new ones. Cite the passage behind every claim about suppliers "
+    "or policy as [1], [2]."
+)
+
+
+def ai_briefing(item: dict) -> dict:
+    """One generated briefing, grounded in the model output and the cited passages.
+
+    The answer is only returned as ``llm`` when it cites real passages and uses no figure
+    that was not in the context; otherwise the caller gets the deterministic briefing.
+    """
+    base = recommend(item)
+    context = _context_block(item, base["sources"], base["steps"])
+    answer = rag.call_llm(SYSTEM_PROMPT, context, BRIEFING_QUESTION)
+    if not answer:
+        reason = "no endpoint configured" if not rag.llm_endpoint() else "endpoint call failed"
+        return {"mode": "offline", "reason": reason, "sources": base["sources"],
+                "answer": None, "endpoint": rag.llm_endpoint() or None}
+    checks = rag.check_grounding(answer, len(base["sources"]), context)
+    if not checks["passed"]:
+        return {"mode": "offline", "reason": "guardrail: " + (
+            f"invented figures {checks['invented_numbers']}" if checks["invented_numbers"]
+            else "missing or invalid citations"),
+                "sources": base["sources"], "answer": None, "checks": checks,
+                "endpoint": rag.llm_endpoint()}
+    return {"mode": "llm", "answer": answer, "sources": base["sources"], "checks": checks,
+            "endpoint": rag.llm_endpoint()}
 
 
 def recommend(item: dict) -> dict:
@@ -93,7 +127,10 @@ def recommend(item: dict) -> dict:
                 passages.append(hits[0])
                 known.append(key)
             ref = known.index(key) + 1
-        steps.append({"text": action["text"], "kind": action["kind"], "ref": ref})
+        steps.append({"text": action["text"], "kind": action["kind"], "ref": ref,
+                      "id": action.get("id"), "approvable": action.get("approvable", False),
+                      "approved": action.get("approved", False),
+                      "cost_eur": action.get("cost_eur")})
     # The supplier's own latest news explains a shortage best, so keep only its passages.
     supplier_word = item["supplier_name"].split()[0].lower()
     why = [p for p in retrieve(f"{item['supplier_name']} update yield confirming volumes", k=5)
@@ -104,12 +141,10 @@ def recommend(item: dict) -> dict:
             passages.insert(0, why[0])
             for step in steps:
                 step["ref"] = step["ref"] + 1 if step["ref"] else None
-    question = "What should we do about this, and why?"
-    llm = _call_llm(question, item, passages)
     return {"situation": situation(item), "steps": steps, "sources": passages,
             "why": (rag.first_sentences(why[0]["text"])
                     if why and item["status"] in ("stockout", "watch") else None),
-            "llm_answer": llm, "mode": "llm" if llm else "offline"}
+            "mode": "offline"}
 
 
 def ask(question: str, item: dict | None) -> dict:
@@ -117,8 +152,9 @@ def ask(question: str, item: dict | None) -> dict:
     question = question.strip()[:500]
     context = short_name(item["product_name"]) if item else ""
     passages = retrieve(question, k=3, context=context)
-    llm = _call_llm(question, item, passages) if item else None
-    if llm:
+    context = _context_block(item, passages) if item else ""
+    llm = rag.call_llm(SYSTEM_PROMPT, context, question) if item else None
+    if llm and rag.check_grounding(llm, len(passages), context)["passed"]:
         return {"answer": llm, "sources": passages, "mode": "llm"}
     if not passages:
         return {"answer": "I could not find this in the supplier knowledge base. Try asking about "

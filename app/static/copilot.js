@@ -74,7 +74,7 @@
         const response = await fetch("/api/ask", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ question, item: form.dataset.item }),
+          body: JSON.stringify({ question, item: form.dataset.item, approved: form.dataset.approved || "" }),
         });
         const data = await response.json();
         if (!response.ok) throw new Error(data.error || "Request failed");
@@ -98,6 +98,40 @@
     });
   };
 
+  const bindBriefing = () => {
+    const box = document.querySelector("#ai-briefing");
+    if (!box) return;
+    const button = box.querySelector("#ai-briefing-button");
+    const out = box.querySelector("#ai-briefing-answer");
+    const escape = (text) => String(text).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+
+    button.addEventListener("click", async () => {
+      button.disabled = true;
+      out.hidden = false;
+      out.innerHTML = '<p class="muted">Calling the model endpoint…</p>';
+      try {
+        const response = await fetch("/api/briefing", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ item: box.dataset.item, approved: box.dataset.approved || "" }),
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || "Request failed");
+        const paragraphs = escape(data.answer).split(/\n\n+/).map((p) => `<p>${p}</p>`).join("");
+        const sources = (data.sources || []).map((s, i) => `<li>[${i + 1}] <strong>${escape(s.section)}</strong> · ${escape(s.title)}</li>`).join("");
+        const tag = data.mode === "llm"
+          ? `<p class="ai-tag">Live model: ${escape(data.endpoint || "serving endpoint")} · guardrail checks passed</p>`
+          : `<p class="ai-tag ai-tag-offline">Offline fallback (${escape(data.reason || "no endpoint")}): assembled from passages, no model call</p>`;
+        out.innerHTML = `${tag}${paragraphs}${sources ? `<ol class="answer-sources">${sources}</ol>` : ""}`;
+      } catch (error) {
+        out.innerHTML = `<p class="muted">${escape(error.message)}</p>`;
+      } finally {
+        button.disabled = false;
+      }
+    });
+  };
+
   drawProjection();
   bindAsk();
+  bindBriefing();
 })();

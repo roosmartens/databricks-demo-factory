@@ -59,9 +59,9 @@ Explain it **left to right in business words**, adding one technical noun per la
 1. **Governed data**: "We connect Postgres, MySQL and the supplier portal once, and join them on one thing everybody understands: a product in a store. Bad rows are quarantined, not silently dropped." *(Lakeflow Connect, Bronze/Silver/Gold, expectations.)*
 2. **Predict**: "On top of that, a demand forecast per store and product, then two predictions people can act on: will this shelf go empty, and will this stock expire?" *(MLflow, Unity Catalog model registry, monitoring.)*
 3. **Explain**: "The copilot reads your supplier agreements, grower updates and past incidents, together with the risk table, and cites its sources." *(Vector Search, Model Serving.)*
-4. **Act**: "Store and category managers get ranked actions. Leaders ask Genie in plain English."
+4. **Act**: "Store and category managers get ranked actions. Leaders can ask in plain English; the Genie space on the Gold tables is defined in the repo but not part of the live demo."
 
-Then the line for the CDO: "Underneath all four sits one governance layer. One copy of the data, one place for permissions, and lineage from every number back to its source row."
+Then the line for the CDO: "Underneath all four sits one governance layer. One copy of the data, one place for permissions, and lineage, permissions and audit that we would configure with you in the pilot; the prototype does not enable them."
 
 ## 4. Live demo (about 12 min)
 
@@ -77,7 +77,7 @@ Show slide 3 for 20 seconds ("one morning, one decision, three moves"), then cli
 | 6 | **Recommended actions** | "Utrecht has 80 punnets it can't sell before they expire. Move them on tomorrow's 06:00 van. Top up the rest from the approved alternative supplier. Cap the promotion. Each action cites the policy that allows it." Tick the first box. | Business: decision |
 | 7 | Click **Happened before?** | "We've seen this before: week 31 cost about €4,200 in Amsterdam. The organisation learns from its own history." | Business: learning loop |
 | 8 | Click Utrecht strawberries in the list | "Same transfer, seen from the other side: waste becomes sales." | Business |
-| 9 | Open **How the data is governed** | "For the data team: every Gold number has lineage back to its source rows. Store managers only see their own store." | CDO |
+| 9 | Open **How the data is governed** | "For the data team: this is the pilot design. Unity Catalog lineage, row filters and masks are what we would configure with you; they are not switched on in this prototype." | CDO |
 | 10 | Optional: the **Forecast accuracy** tab | "Measured, not claimed: 10% error versus 21% with 'same as last week', on days the model never saw. In the pilot we measure on *your* history." | CDO / VP Eng |
 
 Close the demo: "Data in, prediction, explanation, action, in one flow, in five minutes. Today that takes your team a week and three spreadsheets."
@@ -86,7 +86,7 @@ Close the demo: "Data in, prediction, explanation, action, in one flow, in five 
 
 ## 5. Slide 4: value (about 4 min)
 
-- "One point less fresh waste is about €4M a year at cost. That's before availability, which usually matters more to you, because an empty shelf loses the whole basket, not one punnet."
+- "If fresh sales are about €400M (an assumption to validate), one point less waste is about €4M a year at cost. That's before availability, which usually matters more to you, because an empty shelf loses the whole basket, not one punnet."
 - Show the formula, don't defend it: "These are my assumptions. Yours will be different, and the pilot's first job is to measure your baseline."
 - Three KPIs for the scorecard: waste % of fresh sales, Saturday on-shelf availability, time from signal to decision.
 
@@ -119,9 +119,9 @@ Closing line: "Can we agree today on the region and the sponsor, so the baseline
 | --- | --- |
 | **"What does this cost?"** (Business) | "For the pilot, a small team and consumption-based compute on one region. Single-digit thousands of euros of platform spend a month is a realistic starting range to validate with your account team. You pay for what runs, and the forecast runs once a night. Compare that with €4M per point of waste. We'll put the real cost in the week-4 scorecard so you decide on facts." |
 | **"We tried a forecasting tool. Planners ignored it."** | "That's why week 3 is shadow mode with planners, and why every recommendation says *why* and cites the source. People trust what they can check." |
-| **"Can we trust the data?"** (CDO) | "Bad rows are quarantined and counted, not hidden: you saw 2 caught today. Every number in Gold has lineage back to the source row, and finance signs off the baseline in week 2 before anyone acts on it." |
+| **"Can we trust the data?"** (CDO) | "Bad rows are quarantined and counted, not hidden: you saw 2 caught today. Lineage back to source rows is part of the pilot design, and finance signs off the baseline in week 2 before anyone acts on it." |
 | **"LLMs hallucinate."** | "The copilot only answers from retrieved passages and the risk table, and cites both. When it can't find an answer, it says so. Numbers come from the model and the data, never from the LLM. In week 3 a person decides on every action, and we log answers to review them." |
-| **"Our supplier contracts are confidential."** (CDO, security) | "Documents stay in your cloud account, under Unity Catalog permissions. Store managers can be blocked from cost columns with masking, and the model endpoint runs inside the platform with no training on your data. Every question and answer is logged for audit." |
+| **"Our supplier contracts are confidential."** (CDO, security) | "In the pilot design, documents stay in your cloud account under Unity Catalog permissions, cost columns can be masked for store roles, and model calls go to an endpoint inside the workspace. I would confirm the data-use and logging terms with your security team rather than promise them today. Approve in the demo is simulated; it sends nothing to stores or suppliers." |
 | **"This sounds complex. We have three data engineers."** (VP Eng) | "That's why it's one platform instead of five tools: managed connectors, managed model serving, managed vector search. The pilot is one notebook, one app and one job. What you're seeing was built in an afternoon on synthetic data." |
 | **"We already have Snowflake / Fabric / an SAP planning tool."** | "Keep what works. The question is where the forecast, the documents and the AI meet under one set of permissions. Databricks reads and writes open formats (Delta, Iceberg), so it can sit next to what you have. Specialist replenishment tools are strong at ordering, but they don't read your grower emails." |
 | **"Why not just build this in Excel or Power BI?"** | "Power BI is a great front end and can sit on Gold. What it can't do is train and monitor a model, search documents and govern both. That's the gap." |

@@ -19,11 +19,36 @@
             <h1>Today's shelf risks, and what to do.</h1>
             <p class="subheading">{{ snapshot.as_of|day }}, 05:30 · {{ snapshot.quality.store_products }} store-products across 4 stores · next 7 days</p>
           </div>
-          <div class="data-badge">
-            <span class="badge-dot"></span>
-            {{ snapshot.source }}
+          <div class="heading-actions">
+            <div class="data-badge">
+              <span class="badge-dot"></span>
+              {{ snapshot.source }}
+            </div>
+            <a class="button button-secondary" href="{{ reset_url }}" {% if not approved %}aria-disabled="true"{% endif %}>Reset demo</a>
           </div>
         </section>
+
+        {% if impact %}
+          <section class="panel impact-panel" aria-label="Simulated impact of approved actions">
+            <div class="panel-heading">
+              <div>
+                <h2>Simulated impact of {{ approved|length }} approved action{{ "" if approved|length == 1 else "s" }}</h2>
+                <p>Recalculated on synthetic data. Nothing is sent to a store or supplier, and these are modelled changes, not realised savings.</p>
+              </div>
+              <a class="button button-secondary" href="{{ reset_url }}">Reset demo</a>
+            </div>
+            <ul class="approved-list">
+              {% for label in approved_labels %}<li>{{ label }}</li>{% endfor %}
+            </ul>
+            <div class="impact-grid">
+              <div><span>Value at risk</span><strong>€{{ "{:,.0f}".format(impact.before.value_at_risk) }} → €{{ "{:,.0f}".format(impact.after.value_at_risk) }}</strong></div>
+              <div><span>Likely stockouts</span><strong>{{ impact.before.stockouts }} → {{ impact.after.stockouts }}</strong></div>
+              <div><span>Waste risks</span><strong>{{ impact.before.waste }} → {{ impact.after.waste }}</strong></div>
+              <div><span>Action cost (modelled)</span><strong>€{{ "{:,.0f}".format(impact.action_cost_eur) }}</strong></div>
+              <div class="impact-net"><span>Modelled net change</span><strong>€{{ "{:,.0f}".format(impact.net_eur) }}</strong></div>
+            </div>
+          </section>
+        {% endif %}
 
         <!-- The four layers, left to right, as one flow. -->
         <section class="layer-flow" aria-label="From source data to decision">
@@ -56,8 +81,8 @@
           <article class="layer layer-hot">
             <p class="layer-step">4 · DECIDE</p>
             <h2>Actions ready</h2>
-            <p class="layer-big">€{{ "{:,.0f}".format(totals.value_at_risk) }}<span> at risk</span></p>
-            <p class="layer-note">{{ totals.stockouts }} likely stockouts · {{ totals.waste }} waste risks · {{ totals.actions }} recommended actions</p>
+            <p class="layer-big">€{{ "{:,.0f}".format(totals.value_at_risk) }}<span> modelled at risk</span></p>
+            <p class="layer-note">{{ totals.stockouts }} likely stockouts · {{ totals.waste }} waste risks · {{ totals.actions }} recommended actions. Exposure estimate (lost sales at price plus waste at cost), not a savings forecast.</p>
           </article>
         </section>
 
@@ -79,7 +104,7 @@
                     {% set selected = row.store_code == item.store_code and row.sku == item.sku %}
                     <tr class="{% if selected %}selected{% endif %}">
                       <td>
-                        <a href="{{ url_for('home', item=row.store_code ~ ':' ~ row.sku) }}" {% if selected %}aria-current="true"{% endif %}>
+                        <a href="{{ url_for('home', item=row.store_code ~ ':' ~ row.sku, approved=approved_param) }}" {% if selected %}aria-current="true"{% endif %}>
                           <strong>{{ row.product_name }}</strong>
                           <span>{{ row.store_name }}</span>
                         </a>
@@ -129,20 +154,32 @@
               <blockquote class="why"><span>Why this is happening</span>{{ briefing.why }} <cite>[1]</cite></blockquote>
             {% endif %}
 
-            {% if briefing.llm_answer %}
-              <div class="llm-answer">{{ briefing.llm_answer }}</div>
-            {% endif %}
+            <div class="ai-briefing" id="ai-briefing" data-item="{{ item.store_code }}:{{ item.sku }}" data-approved="{{ approved_param or '' }}">
+              <button class="button button-secondary" type="button" id="ai-briefing-button">Generate AI briefing</button>
+              <p class="muted ai-note">One live call to a Databricks model-serving endpoint. It sees only the risk numbers and passages below, and is rejected if it cites a missing source or invents a figure.</p>
+              <div class="llm-answer" id="ai-briefing-answer" aria-live="polite" hidden></div>
+            </div>
 
             {% if briefing.steps %}
               <h3 class="section-label">Recommended actions</h3>
               <ol class="actions">
                 {% for step in briefing.steps %}
-                  <li class="action-{{ step.kind }}">
-                    <label><input type="checkbox"> {{ step.text }}</label>
-                    {% if step.ref %}<cite>[{{ step.ref }}]</cite>{% endif %}
+                  <li class="action-{{ step.kind }}{% if step.approved %} is-approved{% endif %}">
+                    <span class="action-text">{{ step.text }}{% if step.ref %} <cite>[{{ step.ref }}]</cite>{% endif %}</span>
+                    {% if step.approvable %}
+                      <span class="action-controls">
+                        {% if step.cost_eur and not step.approved %}<small>~€{{ "{:,.0f}".format(step.cost_eur) }}</small>{% endif %}
+                        {% if step.approved %}
+                          <a class="button button-small button-secondary" href="{{ step.toggle_url }}">✓ Approved · undo</a>
+                        {% else %}
+                          <a class="button button-small button-primary" href="{{ step.toggle_url }}">{{ "Approve transfer" if step.kind in ("transfer", "transfer_out") else "Approve order" }}</a>
+                        {% endif %}
+                      </span>
+                    {% endif %}
                   </li>
                 {% endfor %}
               </ol>
+              <p class="muted action-note">Approve is simulated: it recalculates the forecast risk here and sends nothing to stores or suppliers.</p>
             {% endif %}
 
             {% if briefing.sources %}
@@ -156,7 +193,7 @@
               </details>
             {% endif %}
 
-            <form class="ask" id="ask-form" data-item="{{ item.store_code }}:{{ item.sku }}">
+            <form class="ask" id="ask-form" data-item="{{ item.store_code }}:{{ item.sku }}" data-approved="{{ approved_param or '' }}">
               <label for="ask-input" class="section-label">Ask the copilot</label>
               <div class="ask-row">
                 <input id="ask-input" name="question" type="text" autocomplete="off"
@@ -173,8 +210,7 @@
               <div class="answer" id="ask-answer" aria-live="polite" hidden></div>
             </form>
             <p class="mode-note">
-              {% if briefing.mode == "llm" %}Answer written by the model-serving endpoint, grounded in the passages above.
-              {% else %}Offline mode: answers are assembled from the retrieved passages, so every sentence has a source. On Databricks the same context goes to a governed LLM endpoint.{% endif %}
+              Searches and the action list are assembled from the retrieved passages, so every line has a source. The AI briefing and, when an endpoint is configured, typed answers come from a Databricks model-serving endpoint that is given the same numbers and passages; answers that fail the citation or figure check fall back to passages only.
             </p>
           </section>
         </div>
@@ -186,14 +222,14 @@
               <thead><tr><th>Source</th><th>Bronze (raw, as delivered)</th><th>Silver (conformed)</th><th>Checks</th></tr></thead>
               <tbody>
                 <tr><td>Postgres · point of sale</td><td>bronze_pos_sales_daily · {{ snapshot.quality.pos_rows }} rows</td><td>silver_sales</td><td>{% for reason, n in snapshot.quality.quarantine_reasons.items() %}{{ n }} × {{ reason }}{% if not loop.last %}, {% endif %}{% endfor %} → quarantine</td></tr>
-                <tr><td>Postgres · promo calendar</td><td>bronze_promo_calendar</td><td>silver_promotions</td><td>Known SKU, future dates</td></tr>
+                <tr><td>Postgres · promo calendar</td><td>bronze_promo_calendar</td><td>silver_promotions</td><td>Conformed to SKU</td></tr>
                 <tr><td>MySQL · store inventory</td><td>bronze_store_inventory · {{ snapshot.quality.inventory_rows }} rows</td><td>silver_inventory</td><td>{{ snapshot.quality.inventory_keys_standardized }} store codes trimmed and upper-cased; EAN mapped to SKU</td></tr>
-                <tr><td>Supplier portal · CSV export</td><td>bronze_supplier_deliveries · {{ snapshot.quality.delivery_rows }} rows</td><td>silver_deliveries</td><td>GTIN mapped to SKU; confirmed ≤ ordered</td></tr>
-                <tr><td>Supplier documents</td><td>Volume: /knowledge</td><td>supplier_knowledge_chunks</td><td>Synced to a Vector Search index</td></tr>
+                <tr><td>Supplier portal · CSV export</td><td>bronze_supplier_deliveries · {{ snapshot.quality.delivery_rows }} rows</td><td>silver_deliveries</td><td>GTIN mapped to SKU</td></tr>
+                <tr><td>Supplier documents</td><td>Volume: /knowledge</td><td>supplier_knowledge_chunks</td><td>Chunked for retrieval (Vector Search in the pilot design)</td></tr>
               </tbody>
             </table>
           </div>
-          <p class="lineage-note">Gold tables <code>gold_store_product_risk</code> and <code>gold_store_product_projection</code> are written by the forecast job; the model is registered in Unity Catalog as <code>grocery_demand_forecast@champion</code>. Unity Catalog records lineage from every Gold number back to its source rows, store managers see only their own store through a row filter, and supplier cost columns are masked for store roles.</p>
+          <p class="lineage-note">Gold tables <code>gold_store_product_risk</code> and <code>gold_store_product_projection</code> are written by the forecast job; in the pilot design Unity Catalog would add lineage from each Gold number to its source rows, plus row filters (store managers see their own store) and column masks (supplier costs) to be configured with the customer. These controls are not enabled in this prototype.</p>
         </details>
 
         <footer class="disclaimer">

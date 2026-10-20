@@ -7,7 +7,7 @@
 # MAGIC 1. **Bronze**: the four sources exactly as delivered: Postgres point of sale and promo calendar, MySQL store inventory, and the supplier-portal CSV export. In production these land through Lakeflow Connect (Postgres, MySQL) and Auto Loader (portal export); here they come from `app/demos/grocery/engine.py`, so the app's offline mode shows the same numbers.
 # MAGIC 2. **Silver**: keys conformed onto one core entity, the **store-product** (store_code × sku), with bad rows quarantined instead of dropped.
 # MAGIC 3. **Model**: the demand forecaster is backtested, tracked in MLflow and registered in Unity Catalog as `grocery_demand_forecast@champion`.
-# MAGIC 4. **Gold**: `gold_store_product_risk` (one row per store-product: stockout probability, waste, actions) and `gold_store_product_projection` (7-day projection), which the app reads.
+# MAGIC 4. **Gold**: `gold_store_product_risk` (one row per store-product: stockout probability, waste, actions), `gold_store_product_projection` (7-day projection) and `gold_forecast_accuracy` (out-of-sample backtest per store-product and day). The app and the Genie space read these.
 # MAGIC 5. **Knowledge**: supplier documents chunked into `supplier_knowledge_chunks` and synced to a Vector Search index for the copilot.
 # MAGIC
 # MAGIC Run it from the repo's Git folder so `app/` can be imported. All data is synthetic.
@@ -54,7 +54,8 @@ spark.sql(f"CREATE SCHEMA IF NOT EXISTS {ns}")
 def save(frame: pd.DataFrame, name: str, comment: str):
     (spark.createDataFrame(frame).write.format("delta").mode("overwrite")
      .option("overwriteSchema", "true").saveAsTable(f"{ns}.{name}"))
-    spark.sql(f"COMMENT ON TABLE {ns}.{name} IS '{comment}'")
+    escaped = comment.replace("'", "''")
+    spark.sql(f"COMMENT ON TABLE {ns}.{name} IS '{escaped}'")
 
 # COMMAND ----------
 # MAGIC %md
@@ -148,6 +149,11 @@ save(risk, "gold_store_product_risk",
      "Stockout probability, waste and recommended actions per store-product, next 7 days")
 save(pd.DataFrame(snapshot["daily"]), "gold_store_product_projection",
      "Daily forecast, confirmed deliveries and projected stock per store-product")
+accuracy = pd.DataFrame(grocery.accuracy_rows(silver["sales"]))
+accuracy["demand_date"] = pd.to_datetime(accuracy["demand_date"]).dt.date
+accuracy["model_version"] = str(info.registered_model_version)
+save(accuracy, "gold_forecast_accuracy",
+     "Out-of-sample backtest per store-product and day: actual sales vs today's method (same weekday last week) and the model")
 save(pd.DataFrame([{"as_of": snapshot["as_of"], "run_id": run.info.run_id,
                     "quality_json": json.dumps(snapshot["quality"]),
                     "backtest_json": json.dumps(snapshot["backtest"])}]),
@@ -205,14 +211,20 @@ if vector_endpoint:
 
 # COMMAND ----------
 
-# MAGIC %sql
-# MAGIC -- Store managers see only their own store; category managers see everything.
-# MAGIC -- CREATE FUNCTION main.grocery_copilot.own_store(store_code STRING)
-# MAGIC --   RETURN is_account_group_member('category_managers')
-# MAGIC --       OR is_account_group_member(concat('store_', lower(replace(store_code, '-', '_'))));
-# MAGIC -- ALTER TABLE main.grocery_copilot.gold_store_product_risk
-# MAGIC --   SET ROW FILTER main.grocery_copilot.own_store ON (store_code);
-# MAGIC -- GRANT SELECT ON TABLE main.grocery_copilot.gold_store_product_risk TO `store_managers`;
-# MAGIC SELECT status, count(*) AS store_products, round(sum(value_at_risk_eur)) AS eur_at_risk
-# MAGIC FROM main.grocery_copilot.gold_store_product_risk
-# MAGIC GROUP BY status ORDER BY eur_at_risk DESC
+# MAGIC %md
+# MAGIC Store managers see only their own store; category managers see everything. Sketch only, not enabled:
+# MAGIC
+# MAGIC ```sql
+# MAGIC CREATE FUNCTION own_store(store_code STRING)
+# MAGIC   RETURN is_account_group_member('category_managers')
+# MAGIC       OR is_account_group_member(concat('store_', lower(replace(store_code, '-', '_'))));
+# MAGIC ALTER TABLE gold_store_product_risk SET ROW FILTER own_store ON (store_code);
+# MAGIC GRANT SELECT ON TABLE gold_store_product_risk TO `store_managers`;
+# MAGIC ```
+
+# COMMAND ----------
+
+display(spark.sql(f"""
+    SELECT status, count(*) AS store_products, round(sum(value_at_risk_eur)) AS eur_at_risk
+    FROM {ns}.gold_store_product_risk
+    GROUP BY status ORDER BY eur_at_risk DESC"""))
