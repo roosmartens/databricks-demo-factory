@@ -1,18 +1,12 @@
-# Customer story
-The runnable HTML example is at `/story` in the Flask app (10 slides). It uses an illustrative demand-planning scenario to connect discovery, the business problem, OKRs, current state, value assumptions, target architecture, demo, and a proposed pilot decision. What to say on each slide is in `SPEAKER_NOTES.md`.
+# Customer story: Grocery Inventory Copilot
 
-The deck is speaker-led: one idea per slide, diagrams and numbers over bullets. Tailor depth for each persona by what you say, not by adding text to slides.
+The deck is at `/story` in the Flask app (5 slides, 16:9, press `E` to edit text live and "Download HTML" to save an offline copy). What to say on each slide, the demo script, the 30-day plan and objection handling are in `SPEAKER_NOTES.md`.
 
-## Story arc
-1. Cover: the promise in one line
-2. Listen first: four discovery questions to validate the problem
-3. Problem: one number that makes the pain tangible
-4. Objectives: three OKRs, each with a baseline and a target
-5. Today: current-state flow and its three pain points
-6. Value: transparent calculation, a sensitivity range, and what is not yet sized
-7. Tomorrow: one governed foundation, from signal to decision
-8. Demo: three moves, then the live demo
-9. Path: a six-week pilot with a go/no-go gate
-10. Ask: three decisions and the next step
+## Story arc (5 slides)
+1. **Problem**: "Empty shelves in Amsterdam. Full bins in Utrecht. Same week." Three numbers to validate in discovery.
+2. **Architecture**: one platform, four layers: governed data → predict → explain → act, under Unity Catalog.
+3. **What we built**: one morning, one decision, three moves (see the risk, understand why, act), then the live demo.
+4. **Value**: €400M fresh × 1 point less waste = €4M a year, plus the three KPIs for the pilot scorecard.
+5. **First 30 days**: connect, baseline, shadow, decide, plus what we need from them today.
 
-Slide rule: one strong takeaway per slide. Clearly label assumptions and illustrative values; never present demo calculations as customer savings.
+Discovery happens before slide 1 is explained, without slides. Every number is labelled as an assumption or as synthetic.

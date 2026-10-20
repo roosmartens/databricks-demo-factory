@@ -83,3 +83,31 @@ def test_copilot_page_and_ask_api(monkeypatch):
     assert answer.status_code == 200
     assert answer.json["sources"][0]["section"] == "Store transfers"
     assert client.post("/api/ask", json={}).status_code == 400
+
+
+def test_databricks_backend_reads_gold_tables(monkeypatch, snapshot):
+    """The app's Databricks path reads exactly what the notebook writes."""
+    import json
+
+    from app import backend
+
+    risk = [{k: v for k, v in i.items() if k != "actions"} | {"actions_json": json.dumps(i["actions"])}
+            for i in snapshot["items"]]
+    run = [{"as_of": snapshot["as_of"], "quality_json": json.dumps(snapshot["quality"]),
+            "backtest_json": json.dumps(snapshot["backtest"])}]
+    tables = {"gold_store_product_risk": risk, "gold_store_product_projection": snapshot["daily"],
+              "gold_copilot_run": run}
+
+    def fake_fetch(warehouse_id, query, parameters=None):
+        name = next(t for t in tables if f".{t} " in f"{query} ")
+        return [dict(row) for row in tables[name]]
+
+    monkeypatch.setenv("DATA_BACKEND", "databricks")
+    monkeypatch.setenv("DATABRICKS_WAREHOUSE_ID", "abc")
+    monkeypatch.setenv("DATABRICKS_COPILOT_SCHEMA", "main.grocery_copilot")
+    monkeypatch.setattr(backend, "_fetch", fake_fetch)
+
+    loaded = backend.load_snapshot()
+    assert loaded["source"] == "Databricks Gold tables"
+    assert loaded["items"][0]["actions"] == snapshot["items"][0]["actions"]
+    assert app.test_client().get("/").status_code == 200

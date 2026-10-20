@@ -1,8 +1,17 @@
-# Databricks Demo Factory
+# Databricks Demo Factory: Grocery Inventory Copilot
 
-A reusable, **case-independent** starter kit for a customer-facing Databricks demo. It runs locally with deterministic synthetic data and separates the web app from a PySpark medallion notebook for Databricks.
+A customer-facing demo for a fictional Dutch grocery chain, **Groenhof Markets**. Stores run out of fresh products while other stores throw the same products away, because sales, stock and supplier news live in systems nobody connects. The demo shows all four layers as one flow:
 
-## 1. Run locally (no Homebrew, Databricks account, or credentials required)
+| Layer | What it does | Where |
+| --- | --- | --- |
+| 1 · Governed data | Postgres POS and promotions, MySQL store stock and a supplier-portal export, unified on **store × product**, with bad rows quarantined | `app/grocery.py` (`make_sources`, `unify`), notebook sections 1–2 |
+| 2 · Predict | Backtested demand forecast, then stockout probability and expected waste per store-product | `SeasonalPromoForecaster`, `build_snapshot`, notebook sections 3–4 |
+| 3 · Explain | Copilot over supplier agreements, grower harvest updates, policies and past incidents; recommends actions and cites sources | `app/copilot.py`, `app/knowledge/*.md`, notebook section 5 |
+| 4 · Act | Copilot page with ranked risks, a 7-day chart, cited actions and an "ask" box; 5-slide deck | `/`, `/story` |
+
+Everything is synthetic and deterministic, so the story is the same every run. The presenter script, 30-day plan and objection handling are in [`slides/SPEAKER_NOTES.md`](./slides/SPEAKER_NOTES.md).
+
+## 1. Run locally (no Databricks account or credentials required)
 
 Prerequisite: Python 3.11 or newer and Git. In Terminal:
 
@@ -13,10 +22,13 @@ source .venv/bin/activate
 python -m app.main
 ```
 
-Open http://localhost:8000. The local app uses synthetic data and does not need Databricks credentials.
-Open http://localhost:8000/story for a ten-slide, Databricks-themed HTML customer story: one idea per slide, with diagrams and numbers instead of bullets. It covers discovery, problem, OKRs, current state, an illustrative value scenario, target architecture, the demo, a six-week pilot, and the ask. Presenter script and objection handling: `slides/SPEAKER_NOTES.md`.
+- http://localhost:8000: the **inventory copilot** (start here in the demo)
+- http://localhost:8000/story: the **5-slide deck** (`→` to advance, `E` to edit text, "Download HTML" for an offline copy)
+- http://localhost:8000/accuracy: chain-level forecast accuracy by market and category (the earlier demand-planning dashboard)
 
-The [Frontend Slides skill](./.github/skills/frontend-slides/SKILL.md) and its MIT license/supporting assets are included for future presentation work. The current deck follows its fixed 16:9 stage and navigation guidance while retaining Flask templates and static assets for the existing app.
+Locally the copilot retrieves passages with BM25 and assembles its answer from them, so it runs offline and every sentence has a source. On Databricks, set `COPILOT_VECTOR_INDEX` and `COPILOT_SERVING_ENDPOINT` to use Vector Search and an LLM on Model Serving with the same context and citations. If either call fails, the app falls back to offline mode.
+
+The [Frontend Slides skill](./.github/skills/frontend-slides/SKILL.md) and its MIT license and supporting assets are included for presentation work.
 
 ## 2. Run tests
 
@@ -51,7 +63,19 @@ databricks auth profiles
 
 Select the intended workspace profile explicitly. Current Databricks AI Tools install command is `databricks aitools install` for CLI versions that support it; see the official agent skills repository. Older CLI versions may not include this feature.
 
-## 5. Databricks data processing and forecast model
+## 5a. Databricks: the grocery copilot lakehouse
+
+Run [`notebooks/grocery_copilot_lakehouse.py`](./notebooks/grocery_copilot_lakehouse.py) from this repo's Git folder (it imports `app/`). Default target: `main.grocery_copilot`.
+
+1. **Bronze**: the four sources as delivered (`bronze_pos_sales_daily`, `bronze_promo_calendar`, `bronze_store_inventory`, `bronze_supplier_deliveries`).
+2. **Silver**: conformed onto store × product, with quarantine counts.
+3. **Model**: backtest logged to MLflow; pyfunc registered as `grocery_demand_forecast@champion`.
+4. **Gold**: `gold_store_product_risk`, `gold_store_product_projection` and `gold_copilot_run`, which the app reads when `DATA_BACKEND=databricks` and `DATABRICKS_COPILOT_SCHEMA=main.grocery_copilot`.
+5. **Knowledge**: `supplier_knowledge_chunks` (Change Data Feed on). Set the `vector_endpoint` widget to create a Delta Sync Vector Search index.
+
+The notebook has not been run against a live workspace in this repo's CI; check it once in your workspace before the demo.
+
+## 5b. Databricks data processing and forecast model (forecast accuracy page)
 
 Run two notebooks in the Databricks workspace UI, in this order. Both default to `main.demo_factory`; change their widgets if your workspace uses a different catalog or schema.
 

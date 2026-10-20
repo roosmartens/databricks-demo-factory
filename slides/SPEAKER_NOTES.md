@@ -1,245 +1,150 @@
-# Speaker notes: demand-planning customer story
+# Speaker notes: Grocery Inventory Copilot
 
-Companion to the 10-slide deck at `/story` (press `→` to advance, `E` to edit text). The deck is deliberately light on words. **You** carry the story; the slides carry the pictures and numbers.
+Companion to the 5-slide deck at `/story` (press `→` to advance, `E` to edit text) and the live copilot at `/`. The slides carry pictures and numbers. **You** carry the story.
 
-> Every number below is **illustrative**. Replace the scenario, the numbers and the vocabulary with what the hiring manager gives you and what the panel confirms in discovery. Never present these as customer results.
+> **Groenhof Markets is fictional** and every number is illustrative or synthetic. Say so once, early: "I've made some assumptions to move fast. Please correct me, because your numbers beat mine." After that, use *their* numbers wherever they give you one.
 
 ## The one-sentence story
 
-> Your planners spend part of every week assembling data instead of using it. If we connect those signals once, on a governed foundation, they get that time back and make better stock decisions. Let's prove it in six weeks on one slice.
+> On the same Saturday you run out of strawberries in Amsterdam and throw them away in Utrecht, because sales, stock and supplier news sit in four systems nobody joins. Connect them once, predict the gaps, let a copilot explain them from your own supplier knowledge, and your teams decide in five minutes instead of debating for weeks. Let's prove it on fresh produce in one region in 30 days.
 
-## Time plan (60 minutes)
+## Customer and cast (assumptions to validate)
 
-| Block | Minutes | Slides | Goal |
+- **Groenhof Markets**: mid-sized Dutch grocery chain, about 110 stores, about €1.2B revenue, about €400M of it fresh.
+- **Pain**: fresh waste around 3.5% of fresh sales (about €14M a year), Saturday on-shelf availability around 92% on fresh, and every Monday meeting starts with "whose number is right?".
+- **Systems**: Postgres (POS and promotions), MySQL (store stock), a supplier portal (SaaS, CSV export), and years of supplier agreements, grower updates and incident notes in documents and email.
+- **Panel personas**: Business leader (COO or Commercial Director), CDO or Head of Data, VP Engineering.
+
+## Run of show (60 minutes)
+
+| Block | Min | What | Goal |
 | --- | --- | --- | --- |
-| Discovery validation | 10 | 1–2 | Listen, confirm the problem, earn the right to pitch |
-| Problem, objectives, today | 8 | 3–5 | Agree on the pain and what must move |
-| Value | 4 | 6 | Make the business case, with honest assumptions |
-| Future state and demo | 11 | 7–8 | Show the art of the possible |
-| Path and ask | 5 | 9–10 | Make the next step obvious |
-| Buffer / interruptions | ~5 | | Panel questions will eat time. That is fine |
-| Debrief (role-play ends) | 15 | | Explain approach, tools, trade-offs |
+| Set-up and discovery | 10 | No slides, then slide 1 | Confirm the pain, the numbers, the owners and the constraints |
+| Architecture | 4 | Slide 2 | "One platform, four layers", in business words |
+| Live demo | 12 | Slide 3, then the app | One morning, one decision |
+| Value | 4 | Slide 4 | €4M per point of waste, measured against *their* baseline |
+| Next steps | 4 | Slide 5 | Get the "go" for 30 days |
+| Buffer for questions | ~6 | | Interruptions are the point. Welcome them |
+| Debrief (role-play ends) | 15 | | Approach, tools, trade-offs, what you'd do differently |
 
-**Clock rule:** if you are behind at minute 30, skip slide 7's detail and go straight to the demo. The demo and the ask matter more than the architecture.
-
----
-
-## Slide 1: Cover (about 1 min)
-
-**Goal:** set the frame and the tone. Do not read the slide.
-
-**Say:**
-"Thanks for making the time. I'd like to spend the first ten minutes listening, because I'd rather solve your problem than present mine. After that I'll show you what's possible and propose a small first step."
-
-**Point to:** the picture. "Many signals today, one trusted view of what's coming."
-
-**Transition:** "So, before I show anything, let me check what I think I've heard."
+**Clock rules:** at minute 25 you must be in the demo. If you're behind, skip the "How the data is governed" panel and offer it to the CDO afterwards. Never skip slide 5.
 
 ---
 
-## Slide 2: Listen first, discovery validation (about 10 min)
+## 1. Discovery (10 min, start without slides)
 
-**Goal:** confirm the problem, baseline, stakeholders and constraints. This is the most important slide of the hour.
+Open: "Thanks for the time. Before I show anything, I want to check I've understood the problem. I'll ask four questions. If I'm wrong, that's the most useful thing that can happen today."
 
-**Say:**
-"I have four questions. I'll ask them in plain language and I'd love corrections: if I'm wrong, that's useful."
+| # | Ask | Who answers | Listen for | Write down |
+| --- | --- | --- | --- | --- |
+| 1 | "When a store runs out of strawberries on a Saturday, how do you find out, and how long after?" | Business | Monday reports, complaints, no early warning | Hours or days of delay |
+| 2 | "What does fresh waste cost you a year, and which categories hurt most?" | Business | € or % of fresh sales; bakery, produce, meat | Their waste % and € |
+| 3 | "If commercial and supply chain show different numbers, who decides which one is right?" | CDO | No owner, spreadsheet merges, definitions | Owner and number of sources |
+| 4 | "What must not change: systems, security rules, cloud, team skills?" | VP Eng | Cloud provider, SAP or ERP, team size, security reviews | Hard constraints |
 
-| Question | What you are really probing | Follow-ups |
-| --- | --- | --- |
-| **Where does the week go?** (Business) | Time lost to reconciling vs deciding | "Roughly how many hours per planner, per week?" "Who feels that most?" |
-| **What does a miss cost?** (Business) | Value of better forecasts: stockouts, markdowns, rush freight | "Last quarter, what did one bad call cost?" "Which category hurts most?" |
-| **Who owns the number?** (Data) | Trust, definitions, accountability | "If two teams show two numbers, who decides?" "Where does the number come from today?" |
-| **What must not change?** (IT / Architecture) | Constraints: ERP, security, skills, cloud | "Which systems are untouchable?" "Who approves new tools?" |
+Bonus question if there's time: "When a supplier warns you about a short harvest, where does that information go?" (It's usually an email to one buyer. That sets up the copilot.)
 
-**Capture during the conversation:**
-- Baseline hours per planner per week
-- Cost of a miss (euro or percentage)
-- Decision owner and sponsor
-- Hard constraints (security, cloud, ERP)
+Then show **slide 1** and say: "This is what I heard from your team before today. Which of these numbers is wrong?" If they correct a number, press `E` and change it live. That's the strongest listening signal you can give.
 
-**Tip:** if they give you different numbers than the deck, **use theirs**. Say: "Great, I'll use your number rather than mine." Edit the slide live (press `E`) if time allows.
+## 2. Slide 1: the problem (included in discovery)
 
-**Transition:** "Thank you. Let me play back what I heard in numbers."
+- "Two stores, same product, same week: one empty shelf, one full bin. It isn't a people problem. Nobody can see both at once."
+- Point to the third box: "Four systems, so every meeting starts by debating whose number is right."
+- Business translation: waste is margin you've already paid for. An empty shelf is a customer who tries the competitor.
 
----
+## 3. Slide 2: architecture (about 4 min)
 
-## Slide 3: The problem (about 2 min)
+Explain it **left to right in business words**, adding one technical noun per layer for the engineers:
 
-**Goal:** make the pain tangible with one number.
+1. **Governed data**: "We connect Postgres, MySQL and the supplier portal once, and join them on one thing everybody understands: a product in a store. Bad rows are quarantined, not silently dropped." *(Lakeflow Connect, Bronze/Silver/Gold, expectations.)*
+2. **Predict**: "On top of that, a demand forecast per store and product, then two predictions people can act on: will this shelf go empty, and will this stock expire?" *(MLflow, Unity Catalog model registry, monitoring.)*
+3. **Explain**: "The copilot reads your supplier agreements, grower updates and past incidents, together with the risk table, and cites its sources." *(Vector Search, Model Serving.)*
+4. **Act**: "Store and category managers get ranked actions. Leaders ask Genie in plain English."
 
-**Say:**
-"What I'm hearing is that planners spend about three hours a week reconciling data. That's one slice of a 40-hour week, the three red squares. It sounds small. Across 12 planners and 48 weeks it is over 1,700 hours a year of skilled people copying and checking numbers instead of acting on them."
+Then the line for the CDO: "Underneath all four sits one governance layer. One copy of the data, one place for permissions, and lineage from every number back to its source row."
 
-**Evidence to state honestly:** "This is the figure from our conversation / my starting hypothesis. We'll replace it with a measured baseline in week one."
+## 4. Live demo (about 12 min)
 
-**If challenged ("it's not three hours"):** "Perfect, that is exactly what the baseline is for. If it's two hours, the value is lower but the case may still hold. Let's see on the next slides."
+Show slide 3 for 20 seconds ("one morning, one decision, three moves"), then click **Open the live copilot**.
 
-**Transition:** "So what do we need to change?"
+| Step | Click | Say | Persona hook |
+| --- | --- | --- | --- |
+| 1 | Point at the four layer cards at the top | "This is the slide you just saw, running. Four sources, one store × product view, 2 bad rows caught, 9 store codes fixed." | CDO: trust |
+| 2 | The risk list | "It's 05:30 on Tuesday. Instead of a 40-tab report, there are eight things worth doing today, sorted by euros at risk." | Business |
+| 3 | Top row: Amsterdam strawberries | "Thursday, the second day of the 2+1 promotion, Amsterdam runs out." | Business |
+| 4 | The chart | "Grey is forecast demand, green is what the supplier actually confirmed, the line is stock. It goes below zero on Thursday." | All |
+| 5 | **Why this is happening** | "This didn't come from a model. It came from a grower update in someone's inbox: rain in Zeeland, 70% of orders confirmed. The copilot found it and cited it." | Business: wow moment |
+| 6 | **Recommended actions** | "Utrecht has 80 punnets it can't sell before they expire. Move them on tomorrow's 06:00 van. Top up the rest from the approved alternative supplier. Cap the promotion. Each action cites the policy that allows it." Tick the first box. | Business: decision |
+| 7 | Click **Happened before?** | "We've seen this before: week 31 cost about €4,200 in Amsterdam. The organisation learns from its own history." | Business: learning loop |
+| 8 | Click Utrecht strawberries in the list | "Same transfer, seen from the other side: waste becomes sales." | Business |
+| 9 | Open **How the data is governed** | "For the data team: every Gold number has lineage back to its source rows. Store managers only see their own store." | CDO |
+| 10 | Optional: the **Forecast accuracy** tab | "Measured, not claimed: 10% error versus 21% with 'same as last week', on days the model never saw. In the pilot we measure on *your* history." | CDO / VP Eng |
 
----
+Close the demo: "Data in, prediction, explanation, action, in one flow, in five minutes. Today that takes your team a week and three spreadsheets."
 
-## Slide 4: Objectives (about 3 min)
+**Be honest about what's mocked:** data is synthetic. Locally the copilot assembles answers from retrieved passages, so every sentence has a source. On Databricks the same retrieved context goes to a governed LLM endpoint. Say it before someone asks.
 
-**Goal:** tie the work to measurable business objectives (OKRs).
+## 5. Slide 4: value (about 4 min)
 
-**Say:**
-"Three objectives, each with one number. First, a forecast you can trust: error from 17 percent to 10. Second, products on the shelf: about 10 percent fewer stockout days. Third, time to decide: from three hours of reconciliation to under one. These are illustrative targets. I'd like to set them together with you today or at the baseline workshop."
+- "One point less fresh waste is about €4M a year at cost. That's before availability, which usually matters more to you, because an empty shelf loses the whole basket, not one punnet."
+- Show the formula, don't defend it: "These are my assumptions. Yours will be different, and the pilot's first job is to measure your baseline."
+- Three KPIs for the scorecard: waste % of fresh sales, Saturday on-shelf availability, time from signal to decision.
 
-**Persona lens:**
-- **Business leader:** talk about availability and margin.
-- **Head of data:** talk about trust in one number.
-- **IT / architecture:** point at "time to decide" as a reduction in manual handoffs.
+## 6. Slide 5: first 30 days and the ask (about 4 min)
 
-**Ask:** "Which of these three is closest to your current priorities? Is there an objective I'm missing?"
+| Week | What happens | Who from Groenhof | Exit criterion |
+| --- | --- | --- | --- |
+| 1 · Connect | Lakeflow Connect to Postgres and MySQL (read replica), portal export into a volume, Unity Catalog set up with IT's access rules | DBA, security, 1 data engineer | Bronze and Silver refreshed daily for one region |
+| 2 · Baseline | Measure today's waste, availability and forecast error the same way for everyone. Train and backtest the forecast on real history | Fresh category manager, finance | Baseline signed off by finance |
+| 3 · Shadow | Risk list and copilot run next to planners in ~20 stores. Planners still decide; we log what they would have changed | 5 category managers, 20 store managers | Usage and feedback, top 3 wrong recommendations understood |
+| 4 · Decide | Scorecard against the baseline, cost of running, go / adjust / stop | Sponsor | A decision, either way |
 
-**Transition:** "Let me show where we're starting from."
+**The ask:** a sponsor plus one fresh category manager, read access to two databases and the portal, and agreement on the scorecard. "If it doesn't move the numbers in 30 days on fresh produce, you'll know for very little money. If it does, the next step is all categories, then the rest of the chain."
 
----
-
-## Slide 5: Today (about 3 min)
-
-**Goal:** show the current state in a way that feels familiar, even a bit funny, and make the pain points concrete.
-
-**Say:**
-"Today, four sources arrive at four different speeds: nightly from the ERP, hourly from the tills, manually for promotions, weekly for warehouse stock. Everything lands in spreadsheets. You'll recognise the file names. Then a weekly meeting where people debate whose numbers are right, and only then an order decision. That's about three days old by then."
-
-**Walk the three numbered pins:**
-1. "Four definitions of demand": each source has its own view.
-2. "Copy-paste, version chaos": the file called `FINAL (2)`.
-3. "Stale before it is used": the data is three days late when the decision is made.
-
-**Ask:** "Is this broadly right? What did I get wrong?" (Listen. Correct the slide verbally.)
-
-**Transition:** "What would it be worth to fix this?"
+Closing line: "Can we agree today on the region and the sponsor, so the baseline workshop is next week?"
 
 ---
 
-## Slide 6: Value (about 4 min)
+## Persona map
 
-**Goal:** a transparent, defensible business case. Show the calculation; do not hide it.
+| Persona | Cares about | Lead with | Show | Avoid |
+| --- | --- | --- | --- | --- |
+| Business leader (COO, Commercial Director) | Margin, availability, speed, customer trust | Euros at risk, the strawberry story | Risk list, cited actions | Model names, architecture detail |
+| CDO / Head of Data | One version of the truth, quality, ownership, compliance | "One copy, one set of permissions, lineage" | Quarantine counts, governance panel, Unity Catalog | Promising accuracy before seeing their data |
+| VP / Director of Engineering | Complexity, run cost, skills, lock-in, security | Open formats, managed services, small team | Notebook, `app.yaml`, the 30-day plan | Hand-waving on effort |
 
-**Say:**
-"A simple calculation: 12 planners, three hours a week, 48 weeks, at 45 euros an hour. That's 77,760 euros of capacity a year. Capacity, not cash: it only becomes savings if that time is redeployed or if we avoid hiring. If planners only save two hours, it's about 52 thousand. If four, about 104 thousand. That range is more honest than one number."
+## Objection handling (answer in under 30 seconds, then check: "Does that answer it?")
 
-**Then:** "The two dashed boxes are the bigger prizes, fewer stockouts and less overstock. I haven't sized them because that needs your data, and I won't guess in front of you."
-
-**Handle the CFO / business leader:**
-- "Is that real money?" → "No, it's time freed. The real money is in stockouts and overstock, which we size together in the pilot."
-- "Where's the payback?" → "We'll know after the pilot. The baseline gives us the before; the pilot gives us the after."
-
-**Never say:** "This will save you 78K." Say: "This is the size of the prize if the time is redeployed."
-
-**Transition:** "How would that work technically, in terms you can explain to colleagues?"
-
----
-
-## Slide 7: Future state (about 3 min, skip detail if short on time)
-
-**Goal:** one picture that works for business and technical people. Business message first, product names second.
-
-**Say (business version):**
-"Left to right: all your signals, connected once, brought together on a governed foundation, and then used by planners in the tools they like. Underneath the lines at the bottom you can see the outcomes: every signal, connected once, trusted and governed, used by planners."
-
-**Say (technical version, only if asked):**
-"Data lands in the Lakehouse in layers: raw (bronze), cleaned (silver) and planning-ready (gold). Forecasting models and quality checks run on the same platform. Unity Catalog gives one place for access control, lineage and audit. People consume it through an app, natural-language questions with Genie, or dashboards."
-
-**Persona lens:**
-| Persona | What they will ask | Answer |
-| --- | --- | --- |
-| **Head of IT** | "Is it secure? Who controls cost?" | One governance layer for access and audit; usage and cost visibility; identity from your existing provider. Confirm the specifics in the pilot. |
-| **Enterprise architect** | "Does this replace our ERP?" | No. Source systems stay authoritative. The platform brings the data together and returns insight. |
-| **Head of data** | "How do we trust the numbers?" | Quality checks between layers, lineage back to source, and one definition in the gold layer. |
-| **Anyone** | "Are we locked in?" | Data is stored in open formats (Delta Lake) in your cloud storage. Confirm the details against their context. |
-
-**Do not** list products. Name one or two only if someone asks.
-
-**Transition:** "Let me show you what planners would actually see."
-
----
-
-## Slide 8: Demo (about 7 min)
-
-**Goal:** show the art of the possible. The prototype is a prop. Keep to three moves.
-
-**Before you click:** state the story, not the tool. "A planner opens one screen instead of four spreadsheets."
-
-**Click the button** (opens `/`, the demand-planning dashboard) and then:
-1. **See demand:** pick a market and category. "Every number on this screen comes from one place."
-2. **Compare forecasts:** show current vs improved forecast. "The line closer to actual demand is the improved forecast. Same data, better model." On the deployed app this is a trained model, scored only on days it never saw.
-3. **Act:** use Export. "From here it goes to the order process."
-
-**Optional fourth move, if the business persona is engaged (about 2 min):** open the Genie space and ask "How much does the model reduce forecast error during promotions?" Then let them ask one question of their own. "Your category managers could ask this themselves, without waiting for a report." Rehearse the questions beforehand; skip this move if you are behind at minute 30.
-
-**Say once, clearly:** "This is synthetic data. The improvement you see is illustrative, to show what's possible, not a result I'm promising."
-
-**If the demo breaks:** go back to the slide chart. "This is the same picture. The point isn't the screen, it's the decision it enables." Move on. Do not debug live.
-
-**Ask while on the demo:** "If your planners had this on Monday morning, what would they do differently?"
-
-**Transition:** "Let me suggest how to find out if this works for you, without a big commitment."
-
----
-
-## Slide 9: The path, six-week pilot (about 3 min)
-
-**Goal:** make the first step small, time-boxed and measurable.
-
-**Say:**
-"I would not start with a platform programme. I'd start with one slice: one region, one category, six weeks. Weeks one and two: baseline, measure today's accuracy and hours. Weeks three and four: build a thin slice end to end. Weeks five and six: planners use it live, and we compare against the baseline. At the end there's a go or no-go decision, and we measure three things: forecast error against baseline, planner hours spent reconciling, stockout days in scope."
-
-**Key phrase:** "If the numbers don't move, we stop, and you've spent six weeks, not six months."
-
-**Handle risk questions:**
-- "Who needs to be involved?" → sponsor, 2–3 planners, a data owner, someone from IT for access.
-- "What do you need from us?" → read access to sample data and a named data owner. Specifics to be agreed.
-- "What if the data's messy?" → "Almost always, and that's useful: the baseline tells us how messy before we commit."
-
-**Transition:** "So what do I need from you today?"
-
----
-
-## Slide 10: Today's ask (about 3 min)
-
-**Goal:** a clear, small call to action. Make "yes" the obvious next step.
-
-**Say:**
-"Three decisions to start. One: pick the slice, which region and category. Two: agree the scorecard, the baseline and the success measures. Three: name the owners, a business sponsor and a data owner. If we can settle those, the next step is a 90-minute baseline workshop this week."
-
-**Close:** pause, then ask: "What would stop us from doing that?" Listen for the real objection, then address it.
-
-**Do not** summarise the whole deck again. End on the ask.
-
----
-
-## Interruptions and objections (quick answers)
-
-| Interruption | Short answer |
+| Objection | Answer |
 | --- | --- |
-| "How much will this cost?" | "Depends on scope and usage; the pilot is designed to be small. I'd rather size it with you after the baseline than quote a number blind." |
-| "We already have a BI tool." | "Good. This isn't about replacing it. It's about feeding it, and the planners, with one trusted number." |
-| "We tried a forecasting project before." | "What happened? (listen) That's helpful. The baseline and go/no-go gate are there precisely to avoid a long project with no proof." |
-| "Our data isn't ready." | "Few people's are. Week one tells us exactly how far we are, with no commitment beyond that." |
-| "Is the AI reliable?" | "It's measured against your actual demand and compared with today's method, with planners staying in control of the decision." If they push: every forecast in the demo is out-of-sample, tracked in MLflow, and the model version is registered in Unity Catalog, so you can see which model produced which number. |
-| "Will Genie make up numbers?" | "It writes SQL on the governed table and shows it. The definition of forecast error is set once, so it answers the same way every time." |
-| "Can't we build it ourselves?" | "Of course you can build parts. The question is how fast you get a trusted number and who maintains it. Let's compare in the pilot." |
-| Anyone goes deep technical | "Great question. Let me note it and we'll go through it properly with the architects. I want to make sure the business case lands first." |
+| **"What does this cost?"** (Business) | "For the pilot, a small team and consumption-based compute on one region. Single-digit thousands of euros of platform spend a month is a realistic starting range to validate with your account team. You pay for what runs, and the forecast runs once a night. Compare that with €4M per point of waste. We'll put the real cost in the week-4 scorecard so you decide on facts." |
+| **"We tried a forecasting tool. Planners ignored it."** | "That's why week 3 is shadow mode with planners, and why every recommendation says *why* and cites the source. People trust what they can check." |
+| **"Can we trust the data?"** (CDO) | "Bad rows are quarantined and counted, not hidden: you saw 2 caught today. Every number in Gold has lineage back to the source row, and finance signs off the baseline in week 2 before anyone acts on it." |
+| **"LLMs hallucinate."** | "The copilot only answers from retrieved passages and the risk table, and cites both. When it can't find an answer, it says so. Numbers come from the model and the data, never from the LLM. In week 3 a person decides on every action, and we log answers to review them." |
+| **"Our supplier contracts are confidential."** (CDO, security) | "Documents stay in your cloud account, under Unity Catalog permissions. Store managers can be blocked from cost columns with masking, and the model endpoint runs inside the platform with no training on your data. Every question and answer is logged for audit." |
+| **"This sounds complex. We have three data engineers."** (VP Eng) | "That's why it's one platform instead of five tools: managed connectors, managed model serving, managed vector search. The pilot is one notebook, one app and one job. What you're seeing was built in an afternoon on synthetic data." |
+| **"We already have Snowflake / Fabric / an SAP planning tool."** | "Keep what works. The question is where the forecast, the documents and the AI meet under one set of permissions. Databricks reads and writes open formats (Delta, Iceberg), so it can sit next to what you have. Specialist replenishment tools are strong at ordering, but they don't read your grower emails." |
+| **"Why not just build this in Excel or Power BI?"** | "Power BI is a great front end and can sit on Gold. What it can't do is train and monitor a model, search documents and govern both. That's the gap." |
+| **"What if the forecast is wrong?"** | "It will be, sometimes. That's why we show a probability, not a promise, and why we measure error every night against your current method. If it drifts, monitoring flags it and we retrain." |
+| **"How long until all 110 stores?"** | "Honestly, it depends on what week 4 shows. Typically: one region in 30 days, all fresh categories in a quarter, then the rest. Each step only goes ahead if it pays for itself." |
 
-## Debrief (final 15 minutes, role-play ends)
+## If something breaks
 
-Be ready to explain:
-- **Why this story:** the problem came first, the technology followed.
-- **How you built it:** which tools and AI assistants you used, what you accepted and what you corrected.
-- **What you'd do next with more time:** a real baseline, sized stockout/overstock value, per-series models at customer scale, a scheduled retrain job, governance walkthrough.
-- **How the model is evaluated:** expanding-window backtest, WAPE against the current method on the same days, MLflow run plus a Unity Catalog model with a `champion` alias.
-- **What you chose not to show:** architecture detail, product list. Explain it was to keep the story customer-led.
-- **What was illustrative:** all numbers on slides 3, 4 and 6 and the data in the demo.
+- **App won't load:** use the screenshots in `slides/` (take them in your gut-check) and keep talking. The story doesn't need the app.
+- **A question you can't answer:** "Good question. I don't want to guess. Let me come back to you with the exact answer by tomorrow." Write it down where they can see.
+- **Running late:** go straight from the demo to slide 5.
 
-## Pre-session checklist
+## Debrief (15 min, role-play ends)
 
-- [ ] Hiring manager has confirmed vertical and scenario; deck text updated to match (press `E`, then **Save edits** or **Download HTML**)
-- [ ] Illustrative numbers replaced or clearly labelled
-- [ ] Demo app runs locally (`/`) and the `/story` page loads, with a screenshot fallback ready
-- [ ] If showing the workspace: both notebooks ran, the MLflow run and registered model open, and the Genie space answers the rehearsed questions
-- [ ] Notes for each persona on one page
-- [ ] Browser zoom reset; deck in full-screen (`F11`/`Ctrl+Cmd+F`); notifications off
-- [ ] A watch or timer visible; check at minute 10, 30 and 45
+- **Approach:** started from the business decision ("what should a store manager do at 05:30?") and worked back to the data, not the other way round.
+- **Build:** Flask app with a deterministic engine (`app/grocery.py`) shared with the Databricks notebook, so local and lakehouse show the same numbers. A simple, explainable forecaster on purpose, because the story needed trust more than a few points of accuracy. A gradient-boosted model is the obvious next step (`notebooks/demand_forecast_model.py` shows the pattern).
+- **Trade-offs:** synthetic data; offline copilot composer instead of a live LLM, for reliability in the room; scripted scenarios so the story is the same every run.
+- **What I'd do next:** real backtests on customer data, Lakehouse Monitoring on the forecast, an evaluation set for copilot answers (MLflow evaluation), and a Genie space on the Gold tables.
+
+## 30-minute gut check
+
+- [ ] `python -m app.main`, then open `/` and `/story`. Click through all 5 slides and the demo path once.
+- [ ] Ask the four suggestion buttons once each.
+- [ ] Save screenshots of the copilot, the strawberry briefing and each slide as an offline fallback.
+- [ ] Say the one-sentence story out loud without notes.
+- [ ] Have your answers ready for cost, hallucinations and "we already have X".
