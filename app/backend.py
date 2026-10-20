@@ -1,13 +1,14 @@
 import os
 import re
-
-import pandas as pd
+from functools import lru_cache
 
 from app.data import make_demo_data
+from app.demos import active_demo
 
 _TABLE_PATTERN = re.compile(
     r"^[A-Za-z_][A-Za-z0-9_]*\.[A-Za-z_][A-Za-z0-9_]*\.[A-Za-z_][A-Za-z0-9_]*$"
 )
+_SCHEMA_PATTERN = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*\.[A-Za-z_][A-Za-z0-9_]*$")
 
 
 class DataSourceError(RuntimeError):
@@ -87,6 +88,34 @@ def _load_demo(region: str, category: str, promotions_only: bool) -> dict:
     return _dashboard_from_rows(rows, "Synthetic demo data", "Illustrative model · WAPE")
 
 
+def _fetch(warehouse_id: str, query: str, parameters: list | None = None) -> list:
+    try:
+        from databricks import sql
+        from databricks.sdk.core import Config
+        from databricks.sql.exc import Error as DatabricksSqlError
+    except ImportError as exc:
+        raise DataSourceError(
+            "Install the Databricks app dependencies to use the workspace backend."
+        ) from exc
+
+    config = Config()
+    try:
+        connection = sql.connect(
+            server_hostname=config.host,
+            http_path=f"/sql/1.0/warehouses/{warehouse_id}",
+            credentials_provider=lambda: config.authenticate,
+        )
+        try:
+            with connection.cursor() as cursor:
+                cursor.execute(query, parameters or [])
+                columns = [column[0] for column in cursor.description]
+                return [dict(zip(columns, row)) for row in cursor.fetchall()]
+        finally:
+            connection.close()
+    except DatabricksSqlError as exc:
+        raise DataSourceError("The Databricks SQL warehouse query failed.") from exc
+
+
 def _load_databricks(region: str, category: str, promotions_only: bool) -> dict:
     warehouse_id = os.environ.get("DATABRICKS_WAREHOUSE_ID", "").strip()
     table = os.environ.get("DATABRICKS_GOLD_TABLE", "").strip()
@@ -96,15 +125,6 @@ def _load_databricks(region: str, category: str, promotions_only: bool) -> dict:
         raise DataSourceError(
             "DATABRICKS_GOLD_TABLE must be a catalog.schema.table name."
         )
-
-    try:
-        from databricks import sql
-        from databricks.sdk.core import Config
-        from databricks.sql.exc import Error as DatabricksSqlError
-    except ImportError as exc:
-        raise DataSourceError(
-            "Install the Databricks app dependencies to use the workspace backend."
-        ) from exc
 
     where = []
     parameters = []
@@ -133,33 +153,14 @@ def _load_databricks(region: str, category: str, promotions_only: bool) -> dict:
         GROUP BY demand_date
         ORDER BY demand_date
     """
-    config = Config()
-
-    try:
-        connection = sql.connect(
-            server_hostname=config.host,
-            http_path=f"/sql/1.0/warehouses/{warehouse_id}",
-            credentials_provider=lambda: config.authenticate,
-        )
-        try:
-            with connection.cursor() as cursor:
-                cursor.execute(query, parameters)
-                result = cursor.fetchall()
-        finally:
-            connection.close()
-    except DatabricksSqlError as exc:
-        raise DataSourceError("The Databricks SQL warehouse query failed.") from exc
-
+    result = _fetch(warehouse_id, query, parameters)
     rows = [
         {
-            "date": row[0].strftime("%Y-%m-%d"),
-            "actual_units": float(row[1] or 0),
-            "baseline_units": float(row[2] or 0),
-            "improved_units": float(row[3] or 0),
-            "baseline_abs_error": float(row[4] or 0),
-            "improved_abs_error": float(row[5] or 0),
-            "absolute_actual_units": float(row[6] or 0),
-            "promotion_days": int(row[7] or 0),
+            "date": row["demand_date"].strftime("%Y-%m-%d"),
+            **{key: float(row[key] or 0) for key in (
+                "actual_units", "baseline_units", "improved_units", "baseline_abs_error",
+                "improved_abs_error", "absolute_actual_units")},
+            "promotion_days": int(row["promotion_days"] or 0),
         }
         for row in result
     ]
@@ -177,3 +178,33 @@ def load_dashboard(region: str, category: str, promotions_only: bool) -> dict:
     raise DataSourceError(
         "DATA_BACKEND must be either 'demo' or 'databricks'."
     )
+
+
+@lru_cache(maxsize=8)
+def _offline_snapshot(demo_key: str) -> dict:
+    snapshot = active_demo().build_snapshot()
+    snapshot["source"] = "Synthetic demo data"
+    return snapshot
+
+
+def load_snapshot() -> dict:
+    """The active demo's snapshot, from synthetic data or its Databricks Gold tables."""
+    demo = active_demo()
+    backend = os.environ.get("DATA_BACKEND", "demo").strip().lower()
+    if backend == "demo":
+        return _offline_snapshot(demo.key)
+    if backend != "databricks":
+        raise DataSourceError("DATA_BACKEND must be either 'demo' or 'databricks'.")
+
+    warehouse_id = os.environ.get("DATABRICKS_WAREHOUSE_ID", "").strip()
+    schema = os.environ.get("DATABRICKS_COPILOT_SCHEMA", "").strip()
+    if not warehouse_id:
+        raise DataSourceError("DATABRICKS_WAREHOUSE_ID is not configured.")
+    if not _SCHEMA_PATTERN.fullmatch(schema):
+        raise DataSourceError("DATABRICKS_COPILOT_SCHEMA must be a catalog.schema name.")
+    try:
+        snapshot = demo.read_databricks(_fetch, warehouse_id, schema)
+    except LookupError as exc:
+        raise DataSourceError(str(exc)) from exc
+    snapshot["source"] = "Databricks Gold tables"
+    return snapshot

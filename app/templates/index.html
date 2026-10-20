@@ -3,31 +3,21 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="theme-color" content="#f7f8fa">
-    <title>Demand overview · Atlas</title>
+    <title>Forecast accuracy · {{ demo.brand|capitalize }}</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    {{ theme_head("app") }}
   </head>
   <body>
     <div class="app-shell">
-      <header class="topbar">
-        <a class="wordmark" href="{{ url_for('index') }}" aria-label="Atlas home">
-          <span class="brand-mark" aria-hidden="true"></span>
-          <span>atlas</span>
-        </a>
-        <nav class="top-nav" aria-label="Primary navigation">
-          <a class="nav-link active" href="{{ url_for('index') }}">Overview</a>
-          <a class="nav-link" href="{{ url_for('story') }}">Customer story</a>
-          <span class="nav-label">Demand planning</span>
-        </nav>
-        <span class="workspace-label"><span class="status-dot"></span> {{ workspace_label }}</span>
-      </header>
+      {% set active = "accuracy" %}
+      {% include "_topbar.html" %}
 
       <main class="main-content">
         <section class="page-heading">
           <div>
-            <p class="eyebrow">DEMAND INTELLIGENCE</p>
+            <p class="eyebrow">FORECAST ACCURACY · CHAIN VIEW</p>
             <h1>Plan with confidence.</h1>
-            <p class="subheading">A clearer view of demand and forecast performance.</p>
+            <p class="subheading">How the forecast compares with today's method, by market and category.</p>
           </div>
           <div class="data-badge">
             <span class="badge-dot"></span>
@@ -36,7 +26,7 @@
         </section>
 
         <section class="filter-bar" aria-label="Dashboard filters">
-          <form method="get" action="{{ url_for('index') }}" class="filter-form">
+          <form method="get" action="{{ url_for('accuracy') }}" class="filter-form">
             <label>
               <span>Market</span>
               <select name="region" onchange="this.form.submit()">
@@ -116,7 +106,7 @@
               <span class="empty-icon" aria-hidden="true">—</span>
               <h3>No demand for these filters</h3>
               <p>Try another market or category, or turn off the promotion-day filter.</p>
-              <a class="text-link" href="{{ url_for('index') }}">Clear filters</a>
+              <a class="text-link" href="{{ url_for('accuracy') }}">Clear filters</a>
             </div>
           {% endif %}
         </section>
