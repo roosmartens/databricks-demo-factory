@@ -4,12 +4,16 @@ A customer-facing demo for a fictional Dutch grocery chain, **Groenhof Markets**
 
 | Layer | What it does | Where |
 | --- | --- | --- |
-| 1 · Governed data | Postgres POS and promotions, MySQL store stock and a supplier-portal export, unified on **store × product**, with bad rows quarantined | `app/grocery.py` (`make_sources`, `unify`), notebook sections 1–2 |
-| 2 · Predict | Backtested demand forecast, then stockout probability and expected waste per store-product | `SeasonalPromoForecaster`, `build_snapshot`, notebook sections 3–4 |
-| 3 · Explain | Copilot over supplier agreements, grower harvest updates, policies and past incidents; recommends actions and cites sources | `app/copilot.py`, `app/knowledge/*.md`, notebook section 5 |
+| 1 · Governed data | Postgres POS and promotions, MySQL store stock and a supplier-portal export, unified on **store × product**, with bad rows quarantined | `app/demos/grocery/engine.py` (`make_sources`, `unify`), notebook sections 1–2 |
+| 2 · Predict | Backtested demand forecast, then stockout probability and expected waste per store-product | `engine.py`: `SeasonalPromoForecaster`, `build_snapshot`, notebook sections 3–4 |
+| 3 · Explain | Copilot over supplier agreements, grower harvest updates, policies and past incidents; recommends actions and cites sources | `app/rag.py`, `app/demos/grocery/copilot.py`, `app/demos/grocery/knowledge/*.md`, notebook section 5 |
 | 4 · Act | Copilot page with ranked risks, a 7-day chart, cited actions and an "ask" box; 5-slide deck | `/`, `/story` |
 
-Everything is synthetic and deterministic, so the story is the same every run. The presenter script, 30-day plan and objection handling are in [`slides/SPEAKER_NOTES.md`](./slides/SPEAKER_NOTES.md).
+Everything is synthetic and deterministic, so the story is the same every run.
+
+**It's a factory, and grocery is the worked example.** The demo lives in `app/demos/grocery/` (data, model, knowledge, copilot wording) and `app/templates/demos/grocery/` (page and slides). The app shell, deck engine, retrieval, Databricks backend and themes are shared. To build another demo, follow [`docs/NEW_DEMO.md`](./docs/NEW_DEMO.md).
+
+**Themes:** every colour, corner radius and font is a CSS token, set per theme in `app/themes.py`. Grocery defaults to the light **Fresh Market** theme; **Lakehouse Night** is the original dark deck. Switch with the picker in the app header, `?theme=lakehouse-night` on any URL, or `DEMO_THEME`. The presenter script, 30-day plan and objection handling are in [`slides/SPEAKER_NOTES.md`](./slides/SPEAKER_NOTES.md).
 
 ## 1. Run locally (no Databricks account or credentials required)
 

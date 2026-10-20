@@ -3,24 +3,14 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="theme-color" content="#f7f8fa">
-    <title>Inventory copilot · Groenhof</title>
+    <title>Inventory copilot · {{ demo.brand|capitalize }}</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    {{ theme_head("app") }}
   </head>
   <body>
     <div class="app-shell">
-      <header class="topbar">
-        <a class="wordmark" href="{{ url_for('copilot') }}" aria-label="Groenhof home">
-          <span class="brand-mark" aria-hidden="true"></span>
-          <span>groenhof</span>
-        </a>
-        <nav class="top-nav" aria-label="Primary navigation">
-          <a class="nav-link active" href="{{ url_for('copilot') }}">Copilot</a>
-          <a class="nav-link" href="{{ url_for('accuracy') }}">Forecast accuracy</a>
-          <a class="nav-link" href="{{ url_for('story') }}">Customer story</a>
-        </nav>
-        <span class="workspace-label"><span class="status-dot"></span> {{ workspace_label }}</span>
-      </header>
+      {% set active = "home" %}
+      {% include "_topbar.html" %}
 
       <main class="main-content">
         <section class="page-heading">
@@ -89,7 +79,7 @@
                     {% set selected = row.store_code == item.store_code and row.sku == item.sku %}
                     <tr class="{% if selected %}selected{% endif %}">
                       <td>
-                        <a href="{{ url_for('copilot', item=row.store_code ~ ':' ~ row.sku) }}" {% if selected %}aria-current="true"{% endif %}>
+                        <a href="{{ url_for('home', item=row.store_code ~ ':' ~ row.sku) }}" {% if selected %}aria-current="true"{% endif %}>
                           <strong>{{ row.product_name }}</strong>
                           <span>{{ row.store_name }}</span>
                         </a>

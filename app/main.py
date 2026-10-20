@@ -6,9 +6,11 @@ import os
 
 from flask import Flask, Response, jsonify, render_template, request
 
-from app import copilot as copilot_engine
+from app import themes
 from app.backend import DataSourceError, load_dashboard, load_snapshot
 from app.data import CATEGORIES, REGIONS
+from app.demos import UnknownItem, active_demo
+from app.demos.grocery.copilot import short_name
 
 app = Flask(__name__)
 logging.basicConfig(level=logging.INFO)
@@ -25,7 +27,17 @@ def day_label(value: str | None) -> str:
     return datetime.date.fromisoformat(str(value)[:10]).strftime("%a %d %b").replace(" 0", " ")
 
 
-app.add_template_filter(copilot_engine.short_name, "short")
+app.add_template_filter(short_name, "short")
+
+
+@app.context_processor
+def demo_and_theme():
+    """Every template gets the active demo and a theme: ?theme=, the picker cookie, DEMO_THEME, the demo default."""
+    demo = active_demo()
+    theme = themes.resolve(request.args.get("theme") or request.cookies.get("theme")
+                           or os.environ.get("DEMO_THEME") or demo.theme)
+    return {"demo": demo, "theme_name": theme, "themes": themes.THEMES,
+            "theme_head": lambda surface: themes.head_tags(theme, surface)}
 
 
 def _filters():
@@ -41,53 +53,30 @@ def _filters():
     return (region, category, promotions_only), None
 
 
-def _selected_item(snapshot: dict, key: str | None) -> dict | None:
-    """``key`` is ``STORE_CODE:SKU``; defaults to the store-product with most value at risk."""
-    items = snapshot["items"]
-    if key:
-        for item in items:
-            if f"{item['store_code']}:{item['sku']}" == key:
-                return item
-        return None
-    return items[0] if items else None
-
-
 @app.get("/")
-def copilot():
+def home():
+    demo = active_demo()
     try:
         snapshot = load_snapshot()
     except DataSourceError:
-        app.logger.exception("Unable to load the copilot snapshot")
+        app.logger.exception("Unable to load the demo snapshot")
         return render_template(
             "error.html",
-            message="Inventory data could not be loaded. Check the app's data source configuration and try again.",
+            message="Demo data could not be loaded. Check the app's data source configuration and try again.",
         ), 503
-
-    item = _selected_item(snapshot, request.args.get("item"))
-    if item is None:
-        return render_template("error.html", message="Unknown store or product."), 404
-    key = (item["store_code"], item["sku"])
-    projection = [row for row in snapshot["daily"] if (row["store_code"], row["sku"]) == key]
-    at_risk = [i for i in snapshot["items"] if i["status"] != "ok"]
+    try:
+        context = demo.page_context(snapshot, request.args)
+    except UnknownItem as exc:
+        return render_template("error.html", message=str(exc)), 404
     return render_template(
-        "copilot.html",
+        demo.page_template,
         snapshot=snapshot,
-        item=item,
-        briefing=copilot_engine.recommend(item),
-        projection=projection,
-        at_risk=at_risk,
-        totals={
-            "stockouts": sum(i["status"] == "stockout" for i in at_risk),
-            "waste": sum(i["status"] == "waste" for i in at_risk),
-            "value_at_risk": sum(i["value_at_risk_eur"] for i in at_risk),
-            "actions": sum(len(i["actions"]) for i in at_risk),
-        },
-        passages=len(copilot_engine.load_passages()),
         workspace_label=(
             "Demo workspace"
             if snapshot["source"] == "Synthetic demo data"
             else "Databricks workspace"
         ),
+        **context,
     )
 
 
@@ -100,10 +89,12 @@ def ask():
     try:
         snapshot = load_snapshot()
     except DataSourceError:
-        app.logger.exception("Unable to load the copilot snapshot")
-        return jsonify({"error": "Inventory data could not be loaded."}), 503
-    item = _selected_item(snapshot, body.get("item")) if body.get("item") else None
-    return jsonify(copilot_engine.ask(question, item))
+        app.logger.exception("Unable to load the demo snapshot")
+        return jsonify({"error": "Demo data could not be loaded."}), 503
+    try:
+        return jsonify(active_demo().ask(question, snapshot, body.get("item") or None))
+    except UnknownItem as exc:
+        return jsonify({"error": str(exc)}), 404
 
 
 @app.get("/accuracy")

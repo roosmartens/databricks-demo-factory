@@ -1,13 +1,12 @@
 # Prompt for your coding agent
-Read README.md and app/data.py. Adapt this reusable prototype to the customer case below.
-Keep the application runnable locally in mock-data mode without Databricks credentials.
-1. Summarize the actual customer business decision and key users.
-2. Propose one 5-minute demo journey and 3-4 relevant measurable KPIs.
-3. Replace synthetic data and business logic with realistic but clearly labeled examples.
-4. Preserve a reliable local fallback and add tests for new business calculations.
-5. Explain any Databricks resources and permissions required before deployment.
-6. Draft six slides following slides/SLIDE_STORYLINE.md.
-Do not invent measurable business impact or claim synthetic ML performance is validated.
 
-## Customer case
-[PASTE CASE HERE]
+To build a new demo on top of the factory, use the prompt at the bottom of [`docs/NEW_DEMO.md`](../docs/NEW_DEMO.md). It copies the worked grocery example (`app/demos/grocery/`) and keeps the shared app shell, deck engine, retrieval and themes as they are.
+
+Ground rules for every demo:
+1. Summarize the customer's business decision and key users first.
+2. One 5-minute demo journey and 3–4 measurable KPIs.
+3. Realistic but clearly labelled synthetic data, runnable offline without credentials.
+4. Tests for new business calculations.
+5. Explain the Databricks resources and permissions needed before deployment.
+6. Five slides: problem, architecture, what we built, value, first 30 days.
+Never invent measurable business impact or claim synthetic ML performance is validated.

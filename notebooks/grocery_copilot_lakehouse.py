@@ -4,7 +4,7 @@
 # MAGIC
 # MAGIC One notebook for the whole demo, in the order the story is told:
 # MAGIC
-# MAGIC 1. **Bronze**: the four sources exactly as delivered: Postgres point of sale and promo calendar, MySQL store inventory, and the supplier-portal CSV export. In production these land through Lakeflow Connect (Postgres, MySQL) and Auto Loader (portal export); here they come from `app/grocery.py`, so the app's offline mode shows the same numbers.
+# MAGIC 1. **Bronze**: the four sources exactly as delivered: Postgres point of sale and promo calendar, MySQL store inventory, and the supplier-portal CSV export. In production these land through Lakeflow Connect (Postgres, MySQL) and Auto Loader (portal export); here they come from `app/demos/grocery/engine.py`, so the app's offline mode shows the same numbers.
 # MAGIC 2. **Silver**: keys conformed onto one core entity, the **store-product** (store_code × sku), with bad rows quarantined instead of dropped.
 # MAGIC 3. **Model**: the demand forecaster is backtested, tracked in MLflow and registered in Unity Catalog as `grocery_demand_forecast@champion`.
 # MAGIC 4. **Gold**: `gold_store_product_risk` (one row per store-product: stockout probability, waste, actions) and `gold_store_product_projection` (7-day projection), which the app reads.
@@ -34,8 +34,8 @@ from mlflow.tracking import MlflowClient
 from pyspark.sql import functions as F
 
 sys.path.append(os.path.abspath(".."))  # repo root, so `import app` works from notebooks/
-from app import grocery
-from app.copilot import load_passages
+from app.demos.grocery import engine as grocery
+from app.demos.grocery.copilot import load_passages
 
 dbutils.widgets.text("catalog", "main", "Unity Catalog")
 dbutils.widgets.text("schema", "grocery_copilot", "Schema")

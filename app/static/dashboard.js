@@ -9,10 +9,11 @@
   const pad = { top: 12, right: 12, bottom: 32, left: 48 };
   const plotWidth = width - pad.left - pad.right;
   const plotHeight = height - pad.top - pad.bottom;
+  const token = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
   const series = [
-    { key: "actual", color: "#313a45", width: 2.6 },
-    { key: "baseline", color: "#d69846", width: 1.8 },
-    { key: "improved", color: "#338c78", width: 1.8 },
+    { key: "actual", color: token("--series-1"), width: 2.6 },
+    { key: "baseline", color: token("--series-2"), width: 1.8 },
+    { key: "improved", color: token("--series-3"), width: 1.8 },
   ];
 
   const values = series.flatMap(({ key }) => data[key]);
@@ -45,7 +46,7 @@
       x2: width - pad.right,
       y1: yPosition,
       y2: yPosition,
-      stroke: "#eceef1",
+      stroke: token("--subtle"),
       "stroke-width": "1",
     });
     element(
@@ -53,7 +54,7 @@
       {
         x: pad.left - 9,
         y: yPosition + 4,
-        fill: "#858b93",
+        fill: token("--faint"),
         "font-size": "10",
         "text-anchor": "end",
       },
@@ -84,7 +85,7 @@
       {
         x: xPosition,
         y: height - 7,
-        fill: "#858b93",
+        fill: token("--faint"),
         "font-size": "10",
         "text-anchor": index === 0 ? "start" : index === data.dates.length - 1 ? "end" : "middle",
       },

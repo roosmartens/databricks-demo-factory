@@ -1,0 +1,84 @@
+{# Grocery deck: 5 slides, included in the shared deck shell (templates/story.html). #}
+        <!-- === 01 THE PROBLEM === -->
+        <section class="slide s-g-problem active visible" data-slide aria-label="The problem">
+          <p class="eyebrow reveal">GROENHOF MARKETS · FRESH</p>
+          <h1 class="g-title reveal" style="--d:1" data-editable>Empty shelves in Amsterdam.<br><em>Full bins in Utrecht.</em><br>Same week.</h1>
+          <div class="g-facts">
+            <article class="reveal" style="--d:2"><strong data-editable>€14M</strong><p data-editable>fresh food written off every year</p><small data-editable>3.5% of ~€400M fresh sales</small></article>
+            <article class="reveal" style="--d:3"><strong data-editable>1 in 12</strong><p data-editable>fresh products missing on a Saturday</p><small data-editable>~92% on-shelf availability</small></article>
+            <article class="reveal" style="--d:4"><strong data-editable>4</strong><p data-editable>systems, so every meeting starts with "whose number is right?"</p><small data-editable>POS · store stock · supplier portal · documents</small></article>
+          </div>
+          <p class="assume reveal" style="--d:5" data-editable>OUR ASSUMPTIONS FROM THE AE CALLS · TO VALIDATE WITH YOU NOW</p>
+        </section>
+
+        <!-- === 02 ARCHITECTURE === -->
+        <section class="slide s-g-arch" data-slide aria-label="Architecture">
+          <p class="eyebrow reveal">ONE PLATFORM, FOUR LAYERS</p>
+          <h2 class="title reveal" style="--d:1" data-editable>Connect once. Predict. Explain. Act.</h2>
+          <div class="body g-arch reveal" style="--d:2" role="img" aria-label="Sources flow into a governed lakehouse, a prediction layer, a knowledge layer and the copilot app">
+            <div class="g-col">
+              <p class="col-h">SOURCES</p>
+              <span>Postgres<small>sales · promotions</small></span>
+              <span>MySQL<small>store stock</small></span>
+              <span>Supplier portal<small>SaaS export</small></span>
+              <span>Documents<small>agreements · grower news</small></span>
+            </div>
+            <i class="flow">→</i>
+            <div class="g-layer g-l1"><b>1</b><h3 data-editable>Governed data</h3><p data-editable>Bronze, Silver, Gold. One row per store × product.</p><small>LAKEFLOW CONNECT · QUALITY CHECKS</small></div>
+            <i class="flow">→</i>
+            <div class="g-layer g-l2"><b>2</b><h3 data-editable>Predict</h3><p data-editable>Demand forecast, then stockout and waste risk.</p><small>MLFLOW · MODEL REGISTRY · MONITORING</small></div>
+            <i class="flow">→</i>
+            <div class="g-layer g-l3"><b>3</b><h3 data-editable>Explain</h3><p data-editable>Copilot reads supplier knowledge and the risk table, then cites its sources.</p><small>VECTOR SEARCH · MODEL SERVING</small></div>
+            <i class="flow">→</i>
+            <div class="g-layer g-l4"><b>4</b><h3 data-editable>Act</h3><p data-editable>Planners and store managers get ranked actions. Leaders ask Genie.</p><small>DATABRICKS APPS · GENIE · AI/BI</small></div>
+            <div class="g-uc"><b>Unity Catalog governance</b><span>who sees what · where every number came from · audit of every model and answer</span></div>
+          </div>
+        </section>
+
+        <!-- === 03 WHAT WE BUILT === -->
+        <section class="slide s-g-demo" data-slide aria-label="What we built">
+          <p class="eyebrow reveal">WHAT WE BUILT FOR YOU</p>
+          <h2 class="title reveal" style="--d:1" data-editable>One morning, one decision, five minutes.</h2>
+          <div class="body g-demo">
+            <article class="reveal" style="--d:2"><b>05:30</b><h3 data-editable>See the risk</h3><p data-editable>Amsterdam runs out of strawberries on Thursday, during the 2+1 promotion.</p><span>FORECAST + STOCK + DELIVERIES</span></article>
+            <article class="reveal" style="--d:3"><b>05:31</b><h3 data-editable>Understand why</h3><p data-editable>Rain in Zeeland: the grower confirms only 70% of orders. Cited from the grower update.</p><span>SUPPLIER KNOWLEDGE</span></article>
+            <article class="reveal" style="--d:4"><b>05:35</b><h3 data-editable>Act</h3><p data-editable>Move 80 punnets from Utrecht, which would waste them. Top up from Huelva. Cap the promotion.</p><span>RANKED, CITED ACTIONS</span></article>
+          </div>
+          <a class="cta reveal" style="--d:5" href="{{ url_for('home') }}">Open the live copilot <span aria-hidden="true">↗</span></a>
+          <p class="g-honest reveal" style="--d:5" data-editable>Synthetic data · forecast error 10% vs 21% today, out of sample</p>
+        </section>
+
+        <!-- === 04 VALUE === -->
+        <section class="slide s-g-value" data-slide aria-label="Business value">
+          <p class="eyebrow reveal">WHAT IT COULD BE WORTH</p>
+          <h2 class="title reveal" style="--d:1" data-editable>Every point of fresh waste is worth about €4M.</h2>
+          <div class="body g-value">
+            <div class="equation reveal" style="--d:2" aria-label="400 million euro fresh sales times 1 point less waste equals 4 million euro a year">
+              <div><strong>€400M</strong><span>fresh sales</span></div><em>×</em>
+              <div><strong>1 pt</strong><span>less waste</span></div><em>=</em>
+              <div class="result"><strong>€4M</strong><span>per year, at cost</span></div>
+            </div>
+            <ul class="g-kpis reveal" style="--d:3">
+              <li><b data-editable>Waste</b><span data-editable>3.5% → 2.5% of fresh sales</span></li>
+              <li><b data-editable>Availability</b><span data-editable>92% → 95% on Saturdays</span></li>
+              <li><b data-editable>Time to decide</b><span data-editable>weeks → same morning</span></li>
+            </ul>
+          </div>
+          <p class="assume reveal" style="--d:4" data-editable>ILLUSTRATIVE · WE MEASURE AGAINST YOUR OWN BASELINE IN THE PILOT, NOT OUR NUMBERS</p>
+        </section>
+
+        <!-- === 05 FIRST 30 DAYS === -->
+        <section class="slide s-g-plan" data-slide aria-label="First 30 days">
+          <p class="eyebrow reveal">IF YOU SAY GO</p>
+          <h2 class="title reveal" style="--d:1" data-editable>30 days to prove it on fresh produce in one region.</h2>
+          <div class="body g-plan">
+            <article class="reveal" style="--d:2"><b>WEEK 1</b><h3 data-editable>Connect</h3><p data-editable>Postgres, MySQL and the supplier portal into Unity Catalog. Access rules agreed with IT.</p></article>
+            <article class="reveal" style="--d:3"><b>WEEK 2</b><h3 data-editable>Baseline</h3><p data-editable>Today's waste, availability and forecast error, measured the same way for everyone.</p></article>
+            <article class="reveal" style="--d:4"><b>WEEK 3</b><h3 data-editable>Shadow</h3><p data-editable>Forecast and copilot run next to planners in 20 stores. Planners still decide.</p></article>
+            <article class="reveal g-gate" style="--d:5"><b>WEEK 4</b><h3 data-editable>Decide</h3><p data-editable>Scorecard against the baseline. Go, adjust, or stop.</p></article>
+          </div>
+          <div class="g-ask reveal" style="--d:6">
+            <p class="mini-title">WHAT WE NEED FROM YOU TODAY</p>
+            <ul><li data-editable>A sponsor and one fresh category manager</li><li data-editable>Read access to two databases and the portal</li><li data-editable>Agreement on the pilot scorecard</li></ul>
+          </div>
+        </section>

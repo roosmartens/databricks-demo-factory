@@ -1,10 +1,9 @@
-import json
 import os
 import re
 from functools import lru_cache
 
 from app.data import make_demo_data
-from app.grocery import build_snapshot
+from app.demos import active_demo
 
 _TABLE_PATTERN = re.compile(
     r"^[A-Za-z_][A-Za-z0-9_]*\.[A-Za-z_][A-Za-z0-9_]*\.[A-Za-z_][A-Za-z0-9_]*$"
@@ -181,44 +180,31 @@ def load_dashboard(region: str, category: str, promotions_only: bool) -> dict:
     )
 
 
-@lru_cache(maxsize=1)
-def _demo_snapshot() -> dict:
-    snapshot = build_snapshot()
+@lru_cache(maxsize=8)
+def _offline_snapshot(demo_key: str) -> dict:
+    snapshot = active_demo().build_snapshot()
     snapshot["source"] = "Synthetic demo data"
     return snapshot
 
 
-def _snapshot_databricks() -> dict:
-    """Read the Gold tables written by notebooks/grocery_copilot_lakehouse.py."""
+def load_snapshot() -> dict:
+    """The active demo's snapshot, from synthetic data or its Databricks Gold tables."""
+    demo = active_demo()
+    backend = os.environ.get("DATA_BACKEND", "demo").strip().lower()
+    if backend == "demo":
+        return _offline_snapshot(demo.key)
+    if backend != "databricks":
+        raise DataSourceError("DATA_BACKEND must be either 'demo' or 'databricks'.")
+
     warehouse_id = os.environ.get("DATABRICKS_WAREHOUSE_ID", "").strip()
     schema = os.environ.get("DATABRICKS_COPILOT_SCHEMA", "").strip()
     if not warehouse_id:
         raise DataSourceError("DATABRICKS_WAREHOUSE_ID is not configured.")
     if not _SCHEMA_PATTERN.fullmatch(schema):
         raise DataSourceError("DATABRICKS_COPILOT_SCHEMA must be a catalog.schema name.")
-
-    items = _fetch(warehouse_id, f"SELECT * FROM {schema}.gold_store_product_risk "
-                                 "ORDER BY value_at_risk_eur DESC")
-    daily = _fetch(warehouse_id, f"SELECT * FROM {schema}.gold_store_product_projection "
-                                 "ORDER BY store_code, sku, date")
-    meta = _fetch(warehouse_id, f"SELECT * FROM {schema}.gold_copilot_run LIMIT 1")
-    if not items or not meta:
-        raise DataSourceError("The copilot Gold tables are empty; run the notebook first.")
-    for item in items:
-        item["actions"] = json.loads(item.pop("actions_json") or "[]")
-    for row in daily:
-        row["date"] = str(row["date"])[:10]
-    return {"as_of": str(meta[0]["as_of"])[:10], "items": items, "daily": daily,
-            "quality": json.loads(meta[0]["quality_json"]),
-            "backtest": json.loads(meta[0]["backtest_json"]),
-            "source": "Databricks Gold tables"}
-
-
-def load_snapshot() -> dict:
-    """Store-product risk snapshot for the copilot, from the configured backend."""
-    backend = os.environ.get("DATA_BACKEND", "demo").strip().lower()
-    if backend == "demo":
-        return _demo_snapshot()
-    if backend == "databricks":
-        return _snapshot_databricks()
-    raise DataSourceError("DATA_BACKEND must be either 'demo' or 'databricks'.")
+    try:
+        snapshot = demo.read_databricks(_fetch, warehouse_id, schema)
+    except LookupError as exc:
+        raise DataSourceError(str(exc)) from exc
+    snapshot["source"] = "Databricks Gold tables"
+    return snapshot

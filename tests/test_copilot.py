@@ -1,7 +1,7 @@
 import pytest
 
-from app import copilot
-from app.grocery import build_snapshot, make_sources, unify
+from app.demos.grocery import copilot
+from app.demos.grocery.engine import build_snapshot, make_sources, unify
 from app.main import app
 
 

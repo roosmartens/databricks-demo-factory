@@ -3,16 +3,17 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Unable to load · Groenhof</title>
+    <title>Unable to load · {{ demo.brand|capitalize }}</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    {{ theme_head("app") }}
   </head>
   <body class="error-page">
     <main class="error-card">
-      <a class="wordmark" href="{{ url_for('copilot') }}"><span class="brand-mark"></span> groenhof</a>
-      <p class="eyebrow">INVENTORY COPILOT</p>
+      <a class="wordmark" href="{{ url_for('home') }}"><span class="brand-mark"></span> {{ demo.brand }}</a>
+      <p class="eyebrow">{{ demo.title|upper }}</p>
       <h1>We couldn't load this view.</h1>
       <p class="muted">{{ message }}</p>
-      <a class="button button-primary" href="{{ url_for('copilot') }}">Try again</a>
+      <a class="button button-primary" href="{{ url_for('home') }}">Try again</a>
     </main>
   </body>
 </html>

@@ -137,7 +137,7 @@ Closing line: "Can we agree today on the region and the sponsor, so the baseline
 ## Debrief (15 min, role-play ends)
 
 - **Approach:** started from the business decision ("what should a store manager do at 05:30?") and worked back to the data, not the other way round.
-- **Build:** Flask app with a deterministic engine (`app/grocery.py`) shared with the Databricks notebook, so local and lakehouse show the same numbers. A simple, explainable forecaster on purpose, because the story needed trust more than a few points of accuracy. A gradient-boosted model is the obvious next step (`notebooks/demand_forecast_model.py` shows the pattern).
+- **Build:** Flask app with a deterministic engine (`app/demos/grocery/engine.py`) shared with the Databricks notebook, so local and lakehouse show the same numbers. A simple, explainable forecaster on purpose, because the story needed trust more than a few points of accuracy. A gradient-boosted model is the obvious next step (`notebooks/demand_forecast_model.py` shows the pattern).
 - **Trade-offs:** synthetic data; offline copilot composer instead of a live LLM, for reliability in the room; scripted scenarios so the story is the same every run.
 - **What I'd do next:** real backtests on customer data, Lakehouse Monitoring on the forecast, an evaluation set for copilot answers (MLflow evaluation), and a Genie space on the Gold tables.
 

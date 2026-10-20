@@ -1,0 +1,21 @@
+{# Shared app header. Set `active` to "home", "accuracy" or "story" before including. #}
+<header class="topbar">
+  <a class="wordmark" href="{{ url_for('home') }}" aria-label="{{ demo.brand }} home">
+    <span class="brand-mark" aria-hidden="true"></span>
+    <span>{{ demo.brand }}</span>
+  </a>
+  <nav class="top-nav" aria-label="Primary navigation">
+    <a class="nav-link {% if active == 'home' %}active{% endif %}" href="{{ url_for('home') }}">{{ demo.title }}</a>
+    <a class="nav-link {% if active == 'accuracy' %}active{% endif %}" href="{{ url_for('accuracy') }}">Forecast accuracy</a>
+    <a class="nav-link" href="{{ url_for('story') }}">Customer story</a>
+  </nav>
+  <label class="theme-picker">
+    <span class="visually-hidden">Theme</span>
+    <select aria-label="Theme" onchange="document.cookie='theme='+this.value+';path=/;max-age=31536000;samesite=lax';var u=new URL(location.href);u.searchParams.delete('theme');location.href=u">
+      {% for key, theme in themes.items() %}
+        <option value="{{ key }}" {% if key == theme_name %}selected{% endif %}>{{ theme.label }}</option>
+      {% endfor %}
+    </select>
+  </label>
+  {% if workspace_label %}<span class="workspace-label"><span class="status-dot"></span> {{ workspace_label }}</span>{% endif %}
+</header>

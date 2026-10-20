@@ -3,7 +3,7 @@
 
   const STAGE_W = 1920;
   const STAGE_H = 1080;
-  const STORAGE_KEY = "databricks-demo-factory-story-grocery-v1";
+  const STORAGE_KEY = `databricks-demo-factory-story-${document.body.dataset.demo || "default"}-v1`;
 
   class SlideDeck {
     constructor() {
@@ -174,7 +174,7 @@
         const blob = new Blob(["<!doctype html>\n" + doc.outerHTML], { type: "text/html" });
         const link = document.createElement("a");
         link.href = URL.createObjectURL(blob);
-        link.download = "grocery-copilot-story.html";
+        link.download = `${document.body.dataset.demo || "demo"}-story.html`;
         link.click();
         URL.revokeObjectURL(link.href);
         this.setStatus("HTML DOWNLOAD STARTED");
