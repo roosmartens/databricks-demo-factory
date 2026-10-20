@@ -19,19 +19,22 @@ import numpy as np
 import pandas as pd
 
 AS_OF = pd.Timestamp("2026-10-20")  # "today" in the demo: a Tuesday
-HISTORY_DAYS = 56
-HORIZON_DAYS = 7
-DOW_FACTORS = (0.85, 0.85, 0.9, 0.95, 1.15, 1.3, 1.0)  # Monday..Sunday
-STOCKOUT_THRESHOLD = 0.5
-WATCH_THRESHOLD = 0.2
+HISTORY_DAYS = 56                   # weeks of generated sales history (8 weeks)
+HORIZON_DAYS = 7                    # how far ahead we forecast and assess risk
+# Weekday multiplier on demand, Monday..Sunday: 1.0 = an average day, 1.3 = 30% busier (Saturday)
+DOW_FACTORS = (0.85, 0.85, 0.9, 0.95, 1.15, 1.3, 1.0)
+STOCKOUT_THRESHOLD = 0.5            # chance of running out >= 50% -> status "stockout"
+WATCH_THRESHOLD = 0.2               # chance of 20-50% -> status "watch"
 # Operating rules from the (fictional) policy and supplier documents in knowledge/.
-MIN_TRANSFER = 20                      # units per store transfer
-TRANSFER_COST_PER_UNIT = 0.15          # euro, internal van run
-TRANSFER_SHELF_DAYS = {"Fresh produce": 2, "Dairy": 1}  # shelf life needed on arrival; other categories are not transferred
+MIN_TRANSFER = 20                      # smallest worthwhile store-to-store transfer, in units
+TRANSFER_COST_PER_UNIT = 0.15          # euro per unit, internal van run
+# Shelf life (days) the product must still have on arrival; other categories are not transferred
+TRANSFER_SHELF_DAYS = {"Fresh produce": 2, "Dairy": 1}
 CASE_UNITS = 10                        # punnets per Huelva case
-ALT_MIN_CASES = 20                     # Huelva minimum order
-ALT_SUPPLIER_FILL_PCT = 80             # buyers may use the alternative below this confirmed volume
+ALT_MIN_CASES = 20                     # Huelva minimum order in cases (20 x 10 = 200 units)
+ALT_SUPPLIER_FILL_PCT = 80             # buyers may use the alternative when the main supplier confirms less than this %
 
+# size = volume multiplier relative to Utrecht (1.0): Amsterdam sells 35% more
 STORES = pd.DataFrame.from_records([
     {"store_id": 101, "store_code": "AMS-01", "store_name": "Amsterdam Centrum", "size": 1.35},
     {"store_id": 102, "store_code": "UTR-02", "store_name": "Utrecht Oudegracht", "size": 1.0},
@@ -40,7 +43,8 @@ STORES = pd.DataFrame.from_records([
 ])
 
 PRODUCTS = pd.DataFrame.from_records([
-    # sku, ean, name, category, shelf life (days), price, cost, supplier, base daily units
+    # sku, ean (barcode), name, category, shelf life (days), price (EUR), cost (EUR, what we pay),
+    # supplier, base daily units (average sales per day in a size-1.0 store)
     ("SKU-1001", "8712000100015", "Strawberries 400g", "Fresh produce", 4, 3.49, 1.90, "ZBG", 42),
     ("SKU-1002", "8712000100022", "Vine tomatoes 500g", "Fresh produce", 7, 2.29, 1.10, "WKC", 38),
     ("SKU-1003", "8712000100039", "Iceberg lettuce", "Fresh produce", 5, 1.19, 0.55, "WKC", 30),
@@ -53,6 +57,9 @@ PRODUCTS = pd.DataFrame.from_records([
 ], columns=["sku", "ean", "product_name", "category", "shelf_life_days",
             "unit_price", "unit_cost", "supplier_id", "base_units"])
 
+# lead_time_days: days from order to delivery. fill_rate_90d: share of ordered volume actually
+# delivered over the last 90 days. alt_*: fallback supplier, its lead time and price premium (%).
+# can_expedite: whether a faster delivery is possible.
 SUPPLIERS = pd.DataFrame.from_records([
     {"supplier_id": "ZBG", "supplier_name": "Zeeland Berry Growers", "lead_time_days": 1,
      "fill_rate_90d": 0.97, "alt_supplier": "Huelva Berry Cooperative", "alt_lead_days": 2,
@@ -74,12 +81,16 @@ SUPPLIERS = pd.DataFrame.from_records([
      "can_expedite": True},
 ])
 
+# Promo uplift: sales multiplier while a promotion runs, per category (1.6 = +60% units).
 PROMO_UPLIFT = {"Fresh produce": 1.6, "Dairy": 1.35, "Bakery": 1.3, "Meat": 1.45}
-# Planned "2+1" strawberry promotion from Thursday to Sunday of the demo week.
+# (sku, first day, last day) as day offsets from AS_OF: a "2+1" (buy 2, get 1 free)
+# strawberry promotion from Thursday (+2) to Sunday (+5) of the demo week.
 PLANNED_PROMOS = [("SKU-1001", 2, 5)]
 
-# Scripted situations the demo walks through; everything else is business as usual.
-# (store_code, sku): days of cover on hand, days until the oldest batch expires
+# An "override" replaces the generator's normal value for one case, so the demo has
+# scripted situations to walk through; everything else is business as usual.
+# (store_code, sku): (days of cover on hand, days until the oldest batch expires).
+# "Days of cover" = how many days current stock lasts at normal sales pace.
 STOCK_OVERRIDES = {
     ("AMS-01", "SKU-1001"): (0.9, 3),   # promo + harvest shortfall -> stockout first
     ("UTR-02", "SKU-1001"): (5.0, 3),   # over-ordered strawberries -> waste, transfer donor
@@ -88,7 +99,9 @@ STOCK_OVERRIDES = {
     ("UTR-02", "SKU-1009"): (4.2, 2),   # chicken over-stocked -> waste
     ("RTM-03", "SKU-1005"): (3.0, 4),   # avocados, ripening delay at port -> watch
 }
-# Supplier portal: (store_code or "*", sku) -> (first delivery day offset, confirmed fill rate)
+# Supplier portal: (store_code or "*" for all stores, sku) -> (first delivery day offset,
+# confirmed fill rate). Fill rate = share of the ordered units the supplier confirms it will
+# deliver (0.7 = 30% short).
 DELIVERY_OVERRIDES = {
     ("*", "SKU-1001"): (1, 0.7),        # ZBG confirms ~70% of orders after heavy rain in Zeeland
     ("EHV-04", "SKU-1006"): (2, 1.0),   # order missed Monday's 14:00 cut-off
