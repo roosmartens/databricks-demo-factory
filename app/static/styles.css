@@ -1085,7 +1085,7 @@ a.button[aria-disabled="true"] { opacity: 0.45; pointer-events: none; }
   }
 
   .copilot-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .facts {
@@ -1130,4 +1130,67 @@ a.button[aria-disabled="true"] { opacity: 0.45; pointer-events: none; }
   height: 1px;
   overflow: hidden;
   clip: rect(0 0 0 0);
+}
+
+/* Purpose band, role labels and the "which AI tool" guide. */
+.purpose {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 18px;
+  margin-bottom: 18px;
+  padding: 14px 18px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--accent);
+  border-radius: var(--radius);
+}
+.purpose p { margin: 0; font-size: 13px; line-height: 1.5; color: var(--ink-soft); }
+.purpose .purpose-label {
+  margin-bottom: 4px;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.section-label .role { margin-left: 6px; color: var(--muted); font-weight: 500; font-size: 12px; text-transform: none; letter-spacing: 0; }
+.suggestions .suggest-genie small { margin-left: 4px; color: var(--accent); font-weight: 700; }
+
+.tool-guide { margin: 18px 0; }
+.tool-guide-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 16px; margin-bottom: 10px; }
+.tool-guide-head h2 { margin: 0; font-size: 17px; letter-spacing: -0.02em; }
+.tool-guide-head p { margin: 0; color: var(--muted); font-size: 13px; font-weight: 650; }
+.tool-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.tool-cards article {
+  padding: 14px 16px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.tool-cards h3 { margin: 0 0 2px; font-size: 14px; }
+.tool-cards p { margin: 0; font-size: 12px; line-height: 1.5; color: var(--ink-soft); }
+.tool-cards .button { align-self: flex-start; margin-top: auto; }
+
+.improve { margin-bottom: 12px; }
+.improve-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px 20px; padding: 0 19px 16px; }
+.improve-grid h3 { margin: 0 0 4px; font-size: 13px; }
+.improve-grid p { margin: 0; font-size: 12px; line-height: 1.55; color: var(--ink-soft); }
+
+.feedback { display: flex; align-items: center; gap: 6px; margin-top: 6px; font-size: 11px; color: var(--muted); }
+.feedback button {
+  padding: 2px 8px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+  font: inherit;
+  cursor: pointer;
+}
+.feedback button[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); }
+.route-tag { font-size: 11px; font-weight: 700; color: var(--accent-ink); }
+
+@media (max-width: 900px) {
+  .purpose, .tool-cards, .improve-grid { grid-template-columns: 1fr; }
 }

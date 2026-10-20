@@ -18,3 +18,6 @@ env:
   #   value: workspace.grocery_copilot.supplier_knowledge_index
   - name: COPILOT_SERVING_ENDPOINT
     valueFrom: serving-endpoint
+  # Optional: link from the "Which AI tool, when" card to the Genie space built by genie/build_space.py.
+  # - name: GENIE_SPACE_URL
+  #   value: https://<workspace>/genie/rooms/<space-id>

@@ -58,29 +58,74 @@
     });
   };
 
+  const escape = (text) => String(text ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+  const paragraphs = (text) => escape(text).split(/\n\n+/).map((p) => `<p>${p}</p>`).join("");
+  const sourceList = (sources) => {
+    const items = (sources || []).map((s, i) => `<li>[${i + 1}] <strong>${escape(s.section)}</strong> · ${escape(s.title)}</li>`).join("");
+    return items ? `<ol class="answer-sources">${items}</ol>` : "";
+  };
+
+  // What produced the answer, in words the audience understands.
+  const modeTag = (data) => ({
+    llm: `<p class="ai-tag">Written by ${escape(data.endpoint || "the model endpoint")} · citation and number checks passed</p>`,
+    template: `<p class="ai-tag ai-tag-offline">Template briefing (${escape(data.reason || "no model connected")}): same structure and sources, no model call</p>`,
+    briefing: '<p class="ai-tag">This is about today\'s decision, so here is the briefing for it</p>',
+    route: '<p class="route-tag">Numbers question → Genie</p>',
+    offline: '<p class="ai-tag ai-tag-offline">From the documents, quoted (no model connected)</p>',
+  })[data.mode] || "";
+
+  // Thumbs up or down, so bad answers become evaluation questions.
+  const feedback = (kind, item, question, data) => {
+    if (data.mode === "route" || !(data.sources || []).length) return "";
+    const wrap = document.createElement("div");
+    wrap.className = "feedback";
+    wrap.innerHTML = 'Useful? <button type="button" data-vote="up" aria-pressed="false">👍</button><button type="button" data-vote="down" aria-pressed="false">👎</button>';
+    wrap.querySelectorAll("button").forEach((button) => {
+      button.addEventListener("click", async () => {
+        wrap.querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", String(b === button)));
+        try {
+          await fetch("/api/feedback", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ kind, item, question, vote: button.dataset.vote, mode: data.mode,
+                                   sources: (data.sources || []).map((s) => s.section) }),
+          });
+        } catch (error) { /* feedback is best effort */ }
+      });
+    });
+    return wrap;
+  };
+
+  const render = (out, kind, item, question, data) => {
+    out.innerHTML = `${modeTag(data)}${paragraphs(data.answer)}${sourceList(data.sources)}`;
+    const votes = feedback(kind, item, question, data);
+    if (votes) out.appendChild(votes);
+  };
+
+  const post = async (url, payload) => {
+    const response = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || "Request failed");
+    return data;
+  };
+
   const bindAsk = () => {
     const form = document.querySelector("#ask-form");
     if (!form) return;
     const input = form.querySelector("#ask-input");
     const answer = form.querySelector("#ask-answer");
 
-    const escape = (text) => text.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
-
     const submit = async (question) => {
       if (!question.trim()) return;
       answer.hidden = false;
-      answer.innerHTML = '<p class="muted">Searching supplier knowledge…</p>';
+      answer.innerHTML = '<p class="muted">Searching supplier documents…</p>';
       try {
-        const response = await fetch("/api/ask", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ question, item: form.dataset.item, approved: form.dataset.approved || "" }),
-        });
-        const data = await response.json();
-        if (!response.ok) throw new Error(data.error || "Request failed");
-        const paragraphs = escape(data.answer).split(/\n\n+/).map((p) => `<p>${p}</p>`).join("");
-        const sources = data.sources.map((s, i) => `<li>[${i + 1}] <strong>${escape(s.section)}</strong> · ${escape(s.title)}</li>`).join("");
-        answer.innerHTML = `${paragraphs}${sources ? `<ol class="answer-sources">${sources}</ol>` : ""}`;
+        const data = await post("/api/ask", { question, item: form.dataset.item, approved: form.dataset.approved || "" });
+        render(answer, "ask", form.dataset.item, question, data);
       } catch (error) {
         answer.innerHTML = `<p class="muted">${escape(error.message)}</p>`;
       }
@@ -103,26 +148,14 @@
     if (!box) return;
     const button = box.querySelector("#ai-briefing-button");
     const out = box.querySelector("#ai-briefing-answer");
-    const escape = (text) => String(text).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
 
     button.addEventListener("click", async () => {
       button.disabled = true;
       out.hidden = false;
-      out.innerHTML = '<p class="muted">Calling the model endpoint…</p>';
+      out.innerHTML = '<p class="muted">Writing the briefing…</p>';
       try {
-        const response = await fetch("/api/briefing", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ item: box.dataset.item, approved: box.dataset.approved || "" }),
-        });
-        const data = await response.json();
-        if (!response.ok) throw new Error(data.error || "Request failed");
-        const paragraphs = escape(data.answer).split(/\n\n+/).map((p) => `<p>${p}</p>`).join("");
-        const sources = (data.sources || []).map((s, i) => `<li>[${i + 1}] <strong>${escape(s.section)}</strong> · ${escape(s.title)}</li>`).join("");
-        const tag = data.mode === "llm"
-          ? `<p class="ai-tag">Live model: ${escape(data.endpoint || "serving endpoint")} · guardrail checks passed</p>`
-          : `<p class="ai-tag ai-tag-offline">Offline fallback (${escape(data.reason || "no endpoint")}): assembled from passages, no model call</p>`;
-        out.innerHTML = `${tag}${paragraphs}${sources ? `<ol class="answer-sources">${sources}</ol>` : ""}`;
+        const data = await post("/api/briefing", { item: box.dataset.item, approved: box.dataset.approved || "" });
+        render(out, "briefing", box.dataset.item, "", data);
       } catch (error) {
         out.innerHTML = `<p class="muted">${escape(error.message)}</p>`;
       } finally {

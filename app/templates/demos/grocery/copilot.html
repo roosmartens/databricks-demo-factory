@@ -28,6 +28,22 @@
           </div>
         </section>
 
+        <!-- Who this is for, the problem before, and what changes. -->
+        <section class="purpose" aria-label="What this app is for">
+          <div>
+            <p class="purpose-label">Who uses it</p>
+            <p><strong>Fresh category managers</strong> at 05:30, before orders close at 12:00, and the <strong>store managers</strong> who act on transfers and markdowns.</p>
+          </div>
+          <div>
+            <p class="purpose-label">The problem today</p>
+            <p>Sales sit in Postgres, stock in MySQL, supplier confirmations in a portal and grower news in email. Nobody joins them in time, so the same week one store runs empty and another throws product away.</p>
+          </div>
+          <div>
+            <p class="purpose-label">What it solves</p>
+            <p>One ranked list of the store-products that will run out or go to waste this week, why, and the action to take, with the source behind every line. The planner approves; nothing is sent automatically.</p>
+          </div>
+        </section>
+
         {% if impact %}
           <section class="panel impact-panel" aria-label="Simulated impact of approved actions">
             <div class="panel-heading">
@@ -155,8 +171,9 @@
             {% endif %}
 
             <div class="ai-briefing" id="ai-briefing" data-item="{{ item.store_code }}:{{ item.sku }}" data-approved="{{ approved_param or '' }}">
+              <h3 class="section-label">AI briefing <span class="role">today's decision, in four lines</span></h3>
+              <p class="muted ai-note">Writes the hand-over a planner would send a store manager: what is happening, why, what to do and what to watch, from the numbers above and the cited documents. With a model-serving endpoint connected it is written by the model and checked (every source must exist, every number must appear in the inputs); without one you get the same structure from a template, labelled as such.</p>
               <button class="button button-secondary" type="button" id="ai-briefing-button">Generate AI briefing</button>
-              <p class="muted ai-note">One live call to a Databricks model-serving endpoint. It sees only the risk numbers and passages below, and is rejected if it cites a missing source or invents a figure.</p>
               <div class="llm-answer" id="ai-briefing-answer" aria-live="polite" hidden></div>
             </div>
 
@@ -194,7 +211,8 @@
             {% endif %}
 
             <form class="ask" id="ask-form" data-item="{{ item.store_code }}:{{ item.sku }}" data-approved="{{ approved_param or '' }}">
-              <label for="ask-input" class="section-label">Ask the copilot</label>
+              <label for="ask-input" class="section-label">Ask the copilot <span class="role">follow-up questions, answered from documents</span></label>
+              <p class="muted ai-note">For what the numbers cannot tell you: supplier contracts, substitution and markdown policy, this week's grower updates and past incidents. It answers only from those documents, cites them, and says so when they do not cover the question. Numbers across stores go to Genie.</p>
               <div class="ask-row">
                 <input id="ask-input" name="question" type="text" autocomplete="off"
                        placeholder="e.g. Why is the supplier short this week?">
@@ -206,14 +224,57 @@
                 <button type="button" data-q="Which substitutes can go on the shelf instead of {{ name }}?">Substitutes?</button>
                 <button type="button" data-q="Has this happened with {{ name }} before, and what did we learn?">Happened before?</button>
                 <button type="button" data-q="What are the rules for store transfers?">Transfer rules?</button>
+                <button type="button" class="suggest-genie" data-q="How much waste do we expect per store this week?">Waste per store? <small>Genie</small></button>
               </div>
               <div class="answer" id="ask-answer" aria-live="polite" hidden></div>
             </form>
             <p class="mode-note">
-              Searches and the action list are assembled from the retrieved passages, so every line has a source. The AI briefing and, when an endpoint is configured, typed answers come from a Databricks model-serving endpoint that is given the same numbers and passages; answers that fail the citation or figure check fall back to passages only.
+              The risk list, chart and actions come from the forecast and rules in the Gold tables, not from a language model. The AI only explains and answers, and every line it shows has a source.
             </p>
           </section>
         </div>
+
+        <!-- Three AI helpers, three jobs. -->
+        <section class="tool-guide" aria-label="Which AI tool to use when">
+          <div class="tool-guide-head">
+            <h2>Which AI tool, when</h2>
+            <p>Numbers → Genie. Documents → Copilot. Today's decision → Briefing.</p>
+          </div>
+          <div class="tool-cards">
+            <article>
+              <p class="layer-step">AI BRIEFING · IN THIS APP</p>
+              <h3>"What do I do about this one?"</h3>
+              <p><b>Use it</b> at 05:30 for the item on screen, to hand over a decision.</p>
+              <p><b>Answers from</b> the risk row for this store-product plus the passages it retrieved.</p>
+              <p><b>Not for</b> questions; it writes one summary.</p>
+            </article>
+            <article>
+              <p class="layer-step">ASK THE COPILOT · IN THIS APP</p>
+              <h3>"Is there another supplier?"</h3>
+              <p><b>Use it</b> for follow-ups the data cannot answer: contracts, policy, grower news, what happened last time.</p>
+              <p><b>Answers from</b> supplier documents (Vector Search over <code>supplier_knowledge_chunks</code>), with citations.</p>
+              <p><b>Not for</b> totals or trends; it routes those to Genie.</p>
+            </article>
+            <article>
+              <p class="layer-step">GENIE SPACE · IN DATABRICKS</p>
+              <h3>"How much waste per store this week?"</h3>
+              <p><b>Use it</b> for any numbers question across stores, products or weeks, typed in plain language.</p>
+              <p><b>Answers from</b> the governed Gold tables, as SQL you can inspect, then a table or chart.</p>
+              <p><b>Not for</b> documents or a recommendation.</p>
+              {% if genie_url %}<a class="button button-small button-secondary" href="{{ genie_url }}" target="_blank" rel="noopener">Open the Genie space</a>{% endif %}
+            </article>
+          </div>
+        </section>
+
+        <details class="data-details improve">
+          <summary>How the AI gets better <span>after the pilot starts</span></summary>
+          <div class="improve-grid">
+            <div><h3>Better documents</h3><p>Grower emails and supplier portal notices land in a Volume and are chunked automatically, so this week's news is searchable by 06:00. Vector Search embeddings replace keyword search, so "another supplier" finds "approved alternative" without a synonym list.</p></div>
+            <div><h3>Measured, not hoped</h3><p>Category managers write 50 real questions with the right answer and source. MLflow evaluation scores every prompt, model or retrieval change against that set before it ships, and LLM judges check groundedness and relevance.</p></div>
+            <div><h3>Feedback from use</h3><p>Every answer has 👍 / 👎. Votes are logged with the question, the sources and the model version (to a Delta table in the pilot), and the bad answers become new test questions.</p></div>
+            <div><h3>Guardrails stay on</h3><p>An answer that cites a missing source or a number not in its inputs is never shown. Unity Catalog decides which stores and costs each user can see, for the AI as for the dashboards.</p></div>
+          </div>
+        </details>
 
         <details class="data-details lineage">
           <summary>How the data is governed <span>for the data team</span></summary>

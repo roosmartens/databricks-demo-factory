@@ -1,6 +1,7 @@
 import csv
 import datetime
 import io
+import json
 import logging
 import os
 
@@ -33,6 +34,7 @@ def demo_and_theme():
     theme = themes.resolve(request.args.get("theme") or request.cookies.get("theme")
                            or os.environ.get("DEMO_THEME") or demo.theme)
     return {"demo": demo, "theme_name": theme, "themes": themes.THEMES,
+            "genie_url": os.environ.get("GENIE_SPACE_URL", "").strip() or None,
             "theme_head": lambda surface: themes.head_tags(theme, surface)}
 
 
@@ -104,6 +106,32 @@ def briefing():
                                               body.get("approved") or None))
     except UnknownItem as exc:
         return jsonify({"error": str(exc)}), 404
+
+
+FEEDBACK_KINDS = {"ask", "briefing"}
+
+
+@app.post("/api/feedback")
+def feedback():
+    """A thumbs up or down on an answer. Logged, and appended to FEEDBACK_LOG (JSONL) when set;
+    in the pilot this row goes to a Delta table and the bad answers become evaluation questions."""
+    body = request.get_json(silent=True) or {}
+    vote, kind = body.get("vote"), body.get("kind")
+    if vote not in ("up", "down") or kind not in FEEDBACK_KINDS:
+        return jsonify({"error": "Send vote 'up' or 'down' and kind 'ask' or 'briefing'."}), 400
+    row = {
+        "at": datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds"),
+        "demo": active_demo().key, "kind": kind, "vote": vote,
+        "item": str(body.get("item", ""))[:40], "question": str(body.get("question", ""))[:500],
+        "mode": str(body.get("mode", ""))[:20],
+        "sources": [str(s)[:120] for s in (body.get("sources") or [])][:5],
+    }
+    app.logger.info("feedback %s", json.dumps(row))
+    path = os.environ.get("FEEDBACK_LOG", "").strip()
+    if path:
+        with open(path, "a", encoding="utf-8") as handle:
+            handle.write(json.dumps(row) + "\n")
+    return jsonify({"ok": True})
 
 
 @app.get("/accuracy")
