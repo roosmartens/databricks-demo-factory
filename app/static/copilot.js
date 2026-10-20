@@ -65,13 +65,13 @@
     return items ? `<ol class="answer-sources">${items}</ol>` : "";
   };
 
-  // What produced the answer, in words the audience understands.
+  // What produced the answer, in a few words.
   const modeTag = (data) => ({
-    llm: `<p class="ai-tag">Written by ${escape(data.endpoint || "the model endpoint")} · citation and number checks passed</p>`,
-    template: `<p class="ai-tag ai-tag-offline">Template briefing (${escape(data.reason || "no model connected")}): same structure and sources, no model call</p>`,
-    briefing: '<p class="ai-tag">This is about today\'s decision, so here is the briefing for it</p>',
+    llm: `<p class="ai-tag">AI draft · ${escape(data.endpoint || "model endpoint")} · checked against the sources</p>`,
+    template: '<p class="ai-tag ai-tag-offline">Template draft · no model connected</p>',
+    briefing: '<p class="ai-tag">Summary of this decision</p>',
     route: '<p class="route-tag">Numbers question → Genie</p>',
-    offline: '<p class="ai-tag ai-tag-offline">From the documents, quoted (no model connected)</p>',
+    offline: '<p class="ai-tag ai-tag-offline">From the supplier documents</p>',
   })[data.mode] || "";
 
   // Thumbs up or down, so bad answers become evaluation questions.
@@ -96,10 +96,26 @@
     return wrap;
   };
 
-  const render = (out, kind, item, question, data) => {
-    out.innerHTML = `${modeTag(data)}${paragraphs(data.answer)}${sourceList(data.sources)}`;
+  const render = (out, kind, item, question, data, genie) => {
+    const genieLink = data.mode === "route" && genie
+      ? `<a class="button button-small button-secondary" href="${escape(genie)}" target="_blank" rel="noopener">Open in Genie ↗</a>` : "";
+    const to = kind === "briefing" && out.dataset.to ? `<p class="draft-to">To: ${escape(out.dataset.to)}</p>` : "";
+    const sources = kind === "briefing" ? "" : sourceList(data.sources);  // the page lists the briefing's sources
+    out.innerHTML = `${modeTag(data)}${to}${paragraphs(data.answer)}${genieLink}${sources}`;
     const votes = feedback(kind, item, question, data);
-    if (votes) out.appendChild(votes);
+    if (!votes) return;
+    if (kind === "briefing" && navigator.clipboard) {
+      const copy = document.createElement("button");
+      copy.type = "button";
+      copy.className = "text-button";
+      copy.textContent = "Copy";
+      copy.addEventListener("click", async () => {
+        await navigator.clipboard.writeText(data.answer);
+        copy.textContent = "Copied";
+      });
+      votes.prepend(copy);
+    }
+    out.appendChild(votes);
   };
 
   const post = async (url, payload) => {
@@ -125,7 +141,7 @@
       answer.innerHTML = '<p class="muted">Searching supplier documents…</p>';
       try {
         const data = await post("/api/ask", { question, item: form.dataset.item, approved: form.dataset.approved || "" });
-        render(answer, "ask", form.dataset.item, question, data);
+        render(answer, "ask", form.dataset.item, question, data, form.dataset.genie);
       } catch (error) {
         answer.innerHTML = `<p class="muted">${escape(error.message)}</p>`;
       }
@@ -152,7 +168,7 @@
     button.addEventListener("click", async () => {
       button.disabled = true;
       out.hidden = false;
-      out.innerHTML = '<p class="muted">Writing the briefing…</p>';
+      out.innerHTML = '<p class="muted">Drafting…</p>';
       try {
         const data = await post("/api/briefing", { item: box.dataset.item, approved: box.dataset.approved || "" });
         render(out, "briefing", box.dataset.item, "", data);

@@ -21,7 +21,7 @@ The grocery copilot (`app/demos/grocery/`) is the worked example. A new demo is 
 3. **Model the business:** rewrite `engine.py`. Keep the contract the page relies on: `build_snapshot()` returns a dict with `as_of`, `items` (one row per core entity, sorted by priority, each with `actions`), `daily` (time series for the chart), `quality` and `backtest`. Rename the fields to fit the industry (patient, subscriber, machine...).
 4. **Write the knowledge:** 4–6 short Markdown files in `knowledge/`: policies, contracts, past incidents, partner updates. These are what the copilot cites, so write them like the customer's real documents.
 5. **Adjust the copilot:** in `copilot.py` change `SYSTEM_PROMPT`, `situation()` (the one-sentence summary) and the retrieval queries in `recommend()`.
-6. **Page and deck:** edit the copied templates. Keep the four-layer strip on the page and the five-slide arc in the deck (problem, architecture, what we built, value, first 30 days).
+6. **Page and deck:** edit the copied templates. Keep the page built around the user's decision (who it is for in the heading, the queue of decisions, one decision with why and actions; the layers show up as trust context, not as a diagram) and the five-slide arc in the deck (problem and discovery, the live demo, behind the solution, value and future state, next steps).
 7. **Pick or add a theme:** set `theme=` in your `Demo`. To add one, add an entry to `THEMES` in `app/themes.py` with `app` and `deck` token overrides, `fonts_url` and `theme_color`. Every colour, the corner `radius` and the fonts are tokens. See `:root` at the top of `styles.css` and `story.css` for the full list.
 8. **Run it:** `DEMO=<key> python -m app.main`, then add tests next to `tests/test_copilot.py`.
 

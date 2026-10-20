@@ -58,6 +58,9 @@ def page_context(snapshot: dict, args: dict) -> dict:
     key = (item["store_code"], item["sku"])
     item_key = f"{item['store_code']}:{item['sku']}"
     at_risk = [i for i in view["items"] if i["status"] != "ok"]
+    # The queue keeps store-products an approval resolved, so the planner sees them as handled.
+    queue = [i for i in view["items"]
+             if i["status"] != "ok" or any(a.get("approved") for a in i["actions"])]
     briefing = copilot.recommend(item)
     for step in briefing["steps"]:
         if step["approvable"]:
@@ -68,6 +71,7 @@ def page_context(snapshot: dict, args: dict) -> dict:
         "briefing": briefing,
         "projection": [r for r in view["daily"] if (r["store_code"], r["sku"]) == key],
         "at_risk": at_risk,
+        "queue": queue,
         "totals": {
             "stockouts": sum(i["status"] == "stockout" for i in at_risk),
             "waste": sum(i["status"] == "waste" for i in at_risk),

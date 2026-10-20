@@ -230,12 +230,8 @@ def ask(question: str, item: dict | None) -> dict:
     question = question.strip()[:500]
     if is_numbers_question(question):
         return {"mode": "route", "sources": [],
-                "answer": "That is a numbers question across stores, which is Genie's job: it "
-                          "writes SQL on the governed Gold tables and shows the result as a "
-                          "table or chart. The copilot answers from documents (contracts, "
-                          "policies, grower updates, past incidents) for the decision in front "
-                          "of you. Try: \"Is there an alternative supplier?\" or \"What are "
-                          "the transfer rules?\""}
+                "answer": "That is a numbers question, so Genie answers it with SQL on the same "
+                          "Gold tables. I answer from the supplier documents."}
     if item and _ABOUT_THIS_DECISION.search(question):
         base = recommend(item)
         return {"answer": template_briefing(item, base), "sources": base["sources"],
@@ -260,9 +256,7 @@ def ask(question: str, item: dict | None) -> dict:
         return {"answer": llm, "sources": passages, "mode": "llm"}
     if not passages:
         about = f" for {short_name(item['product_name'])}" if item else ""
-        return {"answer": f"The supplier documents do not cover this{about}, so I will not guess. "
-                          "Try a supplier, a substitute, markdowns, transfers or past incidents; "
-                          "in the pilot, a thumbs-down here becomes a gap to fill in the documents.",
+        return {"answer": f"The supplier documents do not cover this{about}, so I will not guess.",
                 "sources": [], "mode": "offline"}
     lines = [f"{rag.best_sentences(p['text'], query)} [{i}]"
              for i, p in enumerate(passages, start=1)]

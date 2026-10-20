@@ -73,8 +73,8 @@ def test_copilot_page_and_ask_api(monkeypatch):
 
     page = client.get("/")
     assert page.status_code == 200
-    assert b"Today&#39;s shelf risks" in page.data or b"Today's shelf risks" in page.data
-    assert b"Recommended actions" in page.data
+    assert b"Today&#39;s decisions" in page.data or b"Today's decisions" in page.data
+    assert b"Do this" in page.data and b"Draft message to the store" in page.data
 
     assert client.get("/?item=EHV-04:SKU-1006").status_code == 200
     assert client.get("/?item=nope").status_code == 404
@@ -183,9 +183,19 @@ def test_feedback_is_validated_and_logged(tmp_path, monkeypatch):
     assert '"vote": "down"' in log.read_text()
 
 
-def test_page_explains_purpose_and_tools(monkeypatch):
+def test_page_links_genie_only_when_configured(monkeypatch):
     monkeypatch.setenv("DATA_BACKEND", "demo")
+    client = app.test_client()
+    monkeypatch.delenv("GENIE_SPACE_URL", raising=False)
+    assert "Ask Genie" not in client.get("/").data.decode()
     monkeypatch.setenv("GENIE_SPACE_URL", "https://example.cloud.databricks.com/genie/rooms/1")
-    page = app.test_client().get("/").data.decode()
-    assert "Who uses it" in page and "Which AI tool, when" in page
-    assert "Open the Genie space" in page
+    page = client.get("/").data.decode()
+    assert "Ask Genie" in page and 'data-genie="https://example.cloud.databricks.com/genie/rooms/1"' in page
+
+
+def test_deck_tells_problem_demo_solution_future_next():
+    deck = app.test_client().get("/story").data.decode()
+    order = ["The problem", "The art of the possible", "Behind the solution",
+             "Business value and future state", "Next steps"]
+    positions = [deck.index(f'aria-label="{label}"') for label in order]
+    assert positions == sorted(positions)

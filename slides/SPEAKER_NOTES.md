@@ -8,38 +8,27 @@ Companion to the 5-slide deck at `/story` (press `→` to advance, `E` to edit t
 
 > On the same Saturday you run out of strawberries in Amsterdam and throw them away in Utrecht, because sales, stock and supplier news sit in four systems nobody joins. Connect them once, predict the gaps, let a copilot explain them from your own supplier knowledge, and your teams decide in five minutes instead of debating for weeks. Let's prove it on fresh produce in one region in 30 days.
 
-## Purpose: who uses it, what was broken, what is solved
 
-The band at the top of the app says this in three boxes. Say it in your own words before the first click.
+## Who the app is for, and how its features divide the work
 
-- **Who uses it:** the fresh **category manager** at 05:30, before supplier orders close at 12:00, and the **store managers** who carry out transfers and markdowns. Not data scientists, not analysts.
-- **The problem today:** sales in Postgres, stock in MySQL, supplier confirmations in a portal, grower news in email. Nobody joins them in time, so in the same week one store runs empty and another bins the same product. The Monday meeting argues about whose number is right.
-- **What is solved now:** one ranked list of what will run out or go to waste this week, why (with the source), and the action to take. The planner approves; nothing is sent automatically. The win is time from signal to decision: minutes, not a week.
+The app is designed so you don't have to explain this; say it once in your own words when you open it.
 
-## Three AI helpers, three jobs (and why Genie is not enough on its own)
+- **Fresh planner** (category manager), 05:30, before supplier orders close at 12:00: works the list of today's decisions top to bottom. The heading says it: "Good morning. 8 shelves need a decision today."
+- **Store manager**: receives the hand-over ("Draft message to the store") and moves the stock.
+- **Planning manager**: reads the four numbers at the top (value at risk, run-outs, waste risks, forecast error) and asks Genie for anything else.
 
-Rule of thumb, also on the page: **Numbers → Genie. Documents → Copilot. Today's decision → Briefing.**
+| Feature | Its one job | Answers from |
+| --- | --- | --- |
+| The list, chart and **Do this** | What will run out or go to waste, and what to do | Forecast and rules on the Gold tables. No LLM |
+| **Draft message to the store** (the AI briefing) | Turn the decision into a hand-over a store manager can act on | The risk row plus the cited passages |
+| **Ask the copilot** | Follow-ups the numbers can't answer: other supplier, substitutes, what happened last time | Supplier documents only. Says so when they don't cover it |
+| **Ask Genie** | Any other number, across stores and weeks | The same Gold tables, as SQL you can inspect. The copilot hands numbers questions to Genie |
 
-| | AI briefing (in the app) | Ask the copilot (in the app) | Genie space (in Databricks) |
-| --- | --- | --- | --- |
-| The question | "What do I do about this one, today?" | "Is there another supplier? What did we do last time?" | "How much waste per store this week? Which products have the most value at risk?" |
-| Answers from | The Gold risk row for the selected store-product plus the passages it retrieved | Supplier documents only: agreements, policies, grower updates, incident notes (Vector Search) | Governed Gold tables, as SQL you can inspect |
-| Output | Four lines a planner can forward: situation, why, do, watch out. Cited | A short cited answer, or "the documents don't cover this" | A table or chart |
-| Not for | Open questions | Totals, trends, comparisons (it routes those to Genie) | Documents, contracts, recommendations |
+**Why not just Genie?** The reason Amsterdam runs out is not in a table. It's in a grower email about rain in Zeeland and a contract that names Huelva as the approved backup with a 20-case minimum. The copilot reads those; Genie does the numbers.
 
-**Why we have the first two at all:** Genie is excellent at numbers, but the reason Amsterdam runs out is not in any table. It is in a grower email about rain in Zeeland and a contract that says Huelva is the approved backup with a 20-case minimum. The copilot reads those. The briefing turns numbers plus documents into a decision someone can act on at 05:30, without opening four tools.
+**Be honest about what is running:** without a model endpoint (`COPILOT_SERVING_ENDPOINT`) the draft is a labelled template and Ask quotes the documents. Retrieval is keyword search over 23 passages with a small synonym list; in the pilot it's Vector Search. Set `GENIE_SPACE_URL` before the demo so the **Ask Genie** tile appears.
 
-**Be honest about what is running:**
-- Without a model endpoint (`COPILOT_SERVING_ENDPOINT` unset), the briefing is a **template** filled from the same numbers and cited passages, and the page labels it "Template briefing". Ask quotes the best sentences from the documents. With an endpoint, the model writes both. Answers are rejected if they cite a missing source or use a number not in their inputs.
-- Retrieval locally is keyword search (BM25) over 23 passages with a small synonym list. In the pilot it is Vector Search embeddings over `supplier_knowledge_chunks`.
-- The risk list, chart and actions are never generated by an LLM. They come from the forecast and rules in Gold.
-
-## How the AI gets better (the answer to "and in six months?")
-
-1. **Better documents.** Grower emails and portal notices land in a Volume and are chunked automatically, so Monday's news is searchable by 06:00. Embeddings replace the synonym list.
-2. **Measured, not hoped.** Category managers write about 50 real questions with the right answer and source. MLflow evaluation (with LLM judges for groundedness and relevance) scores every prompt, model or retrieval change against that set before it ships.
-3. **Feedback from use.** Every answer has 👍 / 👎. Votes are logged with the question, sources and model version (`FEEDBACK_LOG` locally, a Delta table in the pilot). The thumbs-down answers become new evaluation questions in week 3.
-4. **Guardrails stay on.** Citation and number checks, and Unity Catalog permissions apply to the AI exactly as to dashboards.
+**How the AI gets better (if asked "and in six months?"):** real grower emails land automatically and are searched with embeddings; 50 questions graded by category managers run through MLflow evaluation on every change; the 👍/👎 on each answer is logged and the thumbs-down answers become test questions; citation and number checks and Unity Catalog permissions stay on.
 
 ## Customer and cast (assumptions to validate)
 
@@ -48,19 +37,20 @@ Rule of thumb, also on the page: **Numbers → Genie. Documents → Copilot. Tod
 - **Systems**: Postgres (POS and promotions), MySQL (store stock), a supplier portal (SaaS, CSV export), and years of supplier agreements, grower updates and incident notes in documents and email.
 - **Panel personas**: Business leader (COO or Commercial Director), CDO or Head of Data, VP Engineering.
 
+
 ## Run of show (60 minutes)
 
 | Block | Min | What | Goal |
 | --- | --- | --- | --- |
-| Set-up and discovery | 10 | No slides, then slide 1 | Confirm the pain, the numbers, the owners and the constraints |
-| Architecture | 4 | Slide 2 | "One platform, four layers", in business words |
-| Live demo | 12 | Slide 3, then the app | One morning, one decision |
-| Value | 4 | Slide 4 | €4M per point of waste, measured against *their* baseline |
+| Discovery | 10 | No slides, then slide 1 | Confirm the pain, the numbers, the owners and the constraints |
+| The art of the possible | 14 | Slide 2, then the live app | One of their problems, solved end to end: who uses it, how |
+| Behind the solution | 4 | Slide 3 | "What you just saw: four connected layers" |
+| Value and future state | 5 | Slide 4 | €4M per point of waste, then the same platform for the whole chain |
 | Next steps | 4 | Slide 5 | Get the "go" for 30 days |
-| Buffer for questions | ~6 | | Interruptions are the point. Welcome them |
+| Buffer for questions | ~8 | | Interruptions are the point. Welcome them |
 | Debrief (role-play ends) | 15 | | Approach, tools, trade-offs, what you'd do differently |
 
-**Clock rules:** at minute 25 you must be in the demo. If you're behind, skip the "How the data is governed" panel and offer it to the CDO afterwards. Never skip slide 5.
+**Clock rules:** at minute 12 you must be on slide 2. If you're behind, skip **Where the numbers come from** in the app and offer it to the CDO afterwards. Never skip slide 5.
 
 ---
 
@@ -82,51 +72,50 @@ Then show **slide 1** and say: "This is what I heard from your team before today
 ## 2. Slide 1: the problem (included in discovery)
 
 - "Two stores, same product, same week: one empty shelf, one full bin. It isn't a people problem. Nobody can see both at once."
-- Point to the third box: "Four systems, so every meeting starts by debating whose number is right."
+- Each card carries the question that tests it. Ask them out loud, to the person named: **COO** on waste and on what an empty shelf costs, **CDO and Engineering** on whose number wins and who owns each system.
 - Business translation: waste is margin you've already paid for. An empty shelf is a customer who tries the competitor.
+- Bridge to slide 2: "There are several problems in here. Let me show you one of them solved end to end: fresh planning."
 
-## 3. Slide 2: architecture (about 4 min)
+## 3. Slide 2 and the live demo: the art of the possible (about 14 min)
 
-Explain it **left to right in business words**, adding one technical noun per layer for the engineers:
-
-1. **Governed data**: "We connect Postgres, MySQL and the supplier portal once, and join them on one thing everybody understands: a product in a store. Bad rows are quarantined, not silently dropped." *(Lakeflow Connect, Bronze/Silver/Gold, expectations.)*
-2. **Predict**: "On top of that, a demand forecast per store and product, then two predictions people can act on: will this shelf go empty, and will this stock expire?" *(MLflow, Unity Catalog model registry, monitoring.)*
-3. **Explain**: "The copilot reads your supplier agreements, grower updates and past incidents, together with the risk table, and cites its sources." *(Vector Search, Model Serving.)*
-4. **Act**: "Store and category managers get ranked actions. Leaders can ask in plain English; the Genie space on the Gold tables is defined in the repo but not part of the live demo."
-
-Then the line for the CDO: "Underneath all four sits one governance layer. One copy of the data, one place for permissions, and lineage, permissions and audit that we would configure with you in the pilot; the prototype does not enable them."
-
-## 4. Live demo (about 12 min)
-
-Show slide 3 for 20 seconds ("one morning, one decision, three moves"), then click **Open the live copilot**.
+On slide 2, 30 seconds: "This is for three people. The fresh planner decides by 05:30. The store manager gets the hand-over. The planning manager sees the whole week. One morning, three moves." Then click **Open the live copilot**.
 
 | Step | Click | Say | Persona hook |
 | --- | --- | --- | --- |
-| 0 | The purpose band at the top | "This is for the fresh category manager at 05:30. The problem: four systems nobody joins in time. What it solves: one list of what to do today, with the reason." | Business: purpose |
-| 1 | Point at the four layer cards | "This is the slide you just saw, running. Four sources, one store × product view, 2 bad rows caught, 9 store codes fixed." | CDO: trust |
-| 2 | The risk list | "It's 05:30 on Tuesday. Instead of a 40-tab report, there are eight things worth doing today, sorted by euros at risk." | Business |
-| 3 | Top row: Amsterdam strawberries | "Thursday, the second day of the 2+1 promotion, Amsterdam runs out." | Business |
-| 4 | The chart | "Grey is forecast demand, green is what the supplier actually confirmed, the line is stock. It goes below zero on Thursday." | All |
-| 5 | **Why this is happening** | "This didn't come from a model. It came from a grower update in someone's inbox: rain in Zeeland, 70% of orders confirmed. The copilot found it and cited it." | Business: wow moment |
-| 6 | **Recommended actions** | "Utrecht has 80 punnets it can't sell before they expire. Move them on tomorrow's 06:00 van. Top up the rest from the approved alternative supplier. Cap the promotion. Each action cites the policy that allows it." Tick the first box. | Business: decision |
-| 7 | Click **Generate AI briefing** | "This is the hand-over a planner would send the Amsterdam store manager: what, why, do, watch out, every line cited. Here it's a template because no model is connected; on Databricks a serving endpoint writes it and it's rejected if it invents a number." | Business, VP Eng |
-| 8 | Click **Happened before?** in **Ask the copilot** | "Follow-up questions go to the documents, not the tables. We've seen this before: week 31 cost about €4,200 in Amsterdam. The organisation learns from its own history." Click 👍. "Every vote is logged; the bad ones become test questions." | Business: learning loop |
-| 9 | Click **Waste per store? (Genie)** | "Watch: it doesn't guess. Numbers across stores are Genie's job, on the same governed Gold tables." Scroll to **Which AI tool, when**, then open the Genie space if you have one. | CDO / VP Eng: right tool for the job |
-| 10 | Click Utrecht strawberries in the list | "Same transfer, seen from the other side: waste becomes sales." | Business |
-| 11 | Open **How the data is governed** (and **How the AI gets better** if asked) | "For the data team: this is the pilot design. Unity Catalog lineage, row filters and masks are what we would configure with you; they are not switched on in this prototype." | CDO |
-| 12 | Optional: the **Forecast accuracy** tab | "Measured, not claimed: 10% error versus 21% with 'same as last week', on days the model never saw. In the pilot we measure on *your* history." | CDO / VP Eng |
+| 1 | The heading and the four numbers | "It's 05:30 on Tuesday. The planner opens one page: eight shelves need a decision, €1,326 at risk this week. The planning manager reads the same four numbers." | Business |
+| 2 | Top of **Today's decisions**: Amsterdam strawberries | "Worst first. Amsterdam runs out on Thursday, the second day of the 2+1 promotion." | Business |
+| 3 | The chart | "Grey is demand, green is what the supplier actually confirmed, the line is stock. Below zero is an empty shelf." | All |
+| 4 | **Why** and its source chip | "This didn't come from a model. It came from a grower update in someone's inbox: rain in Zeeland, 70% confirmed. Hover the chip: there's the source." | Business: wow moment |
+| 5 | **Do this**, then **Approve** on the transfer | "Utrecht has 80 punnets it can't sell in time. Move them on tomorrow's 06:00 van." Click Approve: the numbers at the top update and the green line says it's simulated. | Business: decision |
+| 6 | **Draft message to the store** | "One click, and the store manager has the hand-over: what, why, what to do, what to watch. Here it's a template; with a model endpoint the model writes it and it's rejected if it invents a number." | Business, VP Eng |
+| 7 | **Ask the copilot**: **Happened before?** | "Follow-ups go to the documents. Week 31: same story, about €4,200 lost. The organisation learns from its own history." Click 👍: "every vote is logged; the bad ones become test questions." | Business: learning loop |
+| 8 | Type "How much waste per store this week?" | "It doesn't guess numbers. That's Genie's job, on the same governed tables." Click **Open in Genie** (or the **Ask Genie** tile). | CDO / VP Eng |
+| 9 | Utrecht strawberries in the list, now **✓ Handled** | "Same transfer from the other side: waste becomes sales." | Business |
+| 10 | Optional: **Where the numbers come from**, the **Forecast accuracy** tab | "Four sources, 2 bad rows quarantined, 9 store codes fixed. And measured, not claimed: 10% error versus 21% with 'same as last week', on days the model never saw." | CDO |
 
-Close the demo: "Data in, prediction, explanation, action, in one flow, in five minutes. Today that takes your team a week and three spreadsheets."
+Close the demo: "One planner, one morning, five minutes. Today that takes your team a week and three spreadsheets."
 
-**Be honest about what's mocked:** data is synthetic. Without a model endpoint the briefing is a labelled template and Ask quotes the documents, so every sentence has a source. On Databricks the same numbers and passages go to a governed model-serving endpoint. Say it before someone asks.
+**Be honest about what's mocked:** data is synthetic, Approve sends nothing, and without a model endpoint the draft is a labelled template. Say it before someone asks.
 
-## 5. Slide 4: value (about 4 min)
+## 4. Slide 3: behind the solution (about 4 min)
 
-- "If fresh sales are about €400M (an assumption to validate), one point less waste is about €4M a year at cost. That's before availability, which usually matters more to you, because an empty shelf loses the whole basket, not one punnet."
-- Show the formula, don't defend it: "These are my assumptions. Yours will be different, and the pilot's first job is to measure your baseline."
+"What you just saw is four connected layers." Point back at what they saw, left to right, one technical noun per layer for the engineers:
+
+1. **Governed data**: "The four numbers and the list come from Postgres, MySQL and the supplier portal, joined once on a product in a store. Bad rows are quarantined, not dropped." *(Lakeflow Connect, Bronze/Silver/Gold, expectations.)*
+2. **Predict**: "The chart is a demand forecast per store and product, turned into two questions people act on: will this shelf go empty, will this stock expire?" *(MLflow, Unity Catalog model registry, monitoring.)*
+3. **Explain**: "The **Why**, the draft and the answers come from your supplier documents, cited." *(Vector Search, Model Serving.)*
+4. **Act**: "Planners approve in the app. Managers ask Genie for any other number." *(Databricks Apps, Genie, AI/BI.)*
+
+Then the line for the CDO: "Underneath sits one governance layer: one copy of the data, one place for permissions. Lineage, row filters and audit are what we'd configure with you in the pilot; the prototype doesn't enable them."
+
+## 5. Slide 4: business value and future state (about 5 min)
+
+- Left: "If fresh sales are about €400M (an assumption to validate), one point less waste is about €4M a year at cost. That's before availability, which usually matters more, because an empty shelf loses the whole basket."
+- Right: "And this is the point for you as a company: none of this was built for strawberries. The same governed data and forecast answer the next problems." Pick the two that came up in discovery, for example promotions (the forecast already sees promo uplift) or supplier scorecards (the portal feed is already in, and Genie can answer it tomorrow).
+- Bottom: "30 days on fresh in one region, a quarter for all fresh, a year for the chain. Each step goes ahead only if it pays for itself." For the CDO and engineering: "one copy of the data, one set of permissions, every use case on the same platform."
 - Three KPIs for the scorecard: waste % of fresh sales, Saturday on-shelf availability, time from signal to decision.
 
-## 6. Slide 5: first 30 days and the ask (about 4 min)
+## 6. Slide 5: next steps, the 30-day pilot (about 4 min)
 
 | Week | What happens | Who from Groenhof | Exit criterion |
 | --- | --- | --- | --- |
@@ -146,7 +135,7 @@ Closing line: "Can we agree today on the region and the sponsor, so the baseline
 | Persona | Cares about | Lead with | Show | Avoid |
 | --- | --- | --- | --- | --- |
 | Business leader (COO, Commercial Director) | Margin, availability, speed, customer trust | Euros at risk, the strawberry story | Risk list, cited actions | Model names, architecture detail |
-| CDO / Head of Data | One version of the truth, quality, ownership, compliance | "One copy, one set of permissions, lineage" | Quarantine counts, governance panel, Unity Catalog | Promising accuracy before seeing their data |
+| CDO / Head of Data | One version of the truth, quality, ownership, compliance | "One copy, one set of permissions, lineage" | Quarantine counts, "Where the numbers come from", Unity Catalog | Promising accuracy before seeing their data |
 | VP / Director of Engineering | Complexity, run cost, skills, lock-in, security | Open formats, managed services, small team | Notebook, `app.yaml`, the 30-day plan | Hand-waving on effort |
 
 ## Objection handling (answer in under 30 seconds, then check: "Does that answer it?")
@@ -160,7 +149,7 @@ Closing line: "Can we agree today on the region and the sponsor, so the baseline
 | **"Our supplier contracts are confidential."** (CDO, security) | "In the pilot design, documents stay in your cloud account under Unity Catalog permissions, cost columns can be masked for store roles, and model calls go to an endpoint inside the workspace. I would confirm the data-use and logging terms with your security team rather than promise them today. Approve in the demo is simulated; it sends nothing to stores or suppliers." |
 | **"This sounds complex. We have three data engineers."** (VP Eng) | "That's why it's one platform instead of five tools: managed connectors, managed model serving, managed vector search. The pilot is one notebook, one app and one job. What you're seeing was built in an afternoon on synthetic data." |
 | **"We already have Snowflake / Fabric / an SAP planning tool."** | "Keep what works. The question is where the forecast, the documents and the AI meet under one set of permissions. Databricks reads and writes open formats (Delta, Iceberg), so it can sit next to what you have. Specialist replenishment tools are strong at ordering, but they don't read your grower emails." |
-| **"Why not just use Genie for everything?"** | "Genie answers numbers questions on tables, and we use it for exactly that. But why Amsterdam runs out isn't in a table: it's in a grower email and a supplier contract. The copilot reads those, and the briefing turns both into one decision. Same Gold tables, same permissions underneath." |
+| **"Why not just use Genie for everything?"** | "Genie answers numbers questions on tables, and we use it for exactly that. But why Amsterdam runs out isn't in a table: it's in a grower email and a supplier contract. The copilot reads those, and the draft turns both into a hand-over for the store. Same Gold tables, same permissions underneath." |
 | **"The answers aren't perfect."** | "Agreed, and here they come from keyword search over 23 passages. In the pilot: embeddings, real grower emails, and 50 questions your category managers grade, run through MLflow evaluation on every change. The 👍/👎 on each answer feeds that set." |
 | **"Why not just build this in Excel or Power BI?"** | "Power BI is a great front end and can sit on Gold. What it can't do is train and monitor a model, search documents and govern both. That's the gap." |
 | **"What if the forecast is wrong?"** | "It will be, sometimes. That's why we show a probability, not a promise, and why we measure error every night against your current method. If it drifts, monitoring flags it and we retrain." |
@@ -170,7 +159,7 @@ Closing line: "Can we agree today on the region and the sponsor, so the baseline
 
 - **App won't load:** use the screenshots in `slides/` (take them in your gut-check) and keep talking. The story doesn't need the app.
 - **A question you can't answer:** "Good question. I don't want to guess. Let me come back to you with the exact answer by tomorrow." Write it down where they can see.
-- **Running late:** go straight from the demo to slide 5.
+- **Running late:** skip slide 3 (offer it to the engineers afterwards), keep slide 4 to one minute, and never skip slide 5.
 
 ## Debrief (15 min, role-play ends)
 
@@ -183,6 +172,6 @@ Closing line: "Can we agree today on the region and the sponsor, so the baseline
 
 - [ ] `python -m app.main`, then open `/` and `/story`. Click through all 5 slides and the demo path once.
 - [ ] Ask the four suggestion buttons once each.
-- [ ] Save screenshots of the copilot, the strawberry briefing and each slide as an offline fallback.
+- [ ] Save screenshots of the copilot, the strawberry draft message and each slide as an offline fallback.
 - [ ] Say the one-sentence story out loud without notes.
 - [ ] Have your answers ready for cost, hallucinations and "we already have X".
