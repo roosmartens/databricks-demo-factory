@@ -75,3 +75,10 @@ def test_csv_export_contains_daily_totals(monkeypatch):
     assert response.status_code == 200
     assert response.mimetype == "text/csv"
     assert b"date,actual_units,baseline_units,improved_units,promotion_days" in response.data
+
+
+def test_local_forecast_is_labelled_illustrative(monkeypatch):
+    monkeypatch.setenv("DATA_BACKEND", "demo")
+    response = app.test_client().get("/")
+
+    assert "Illustrative model · WAPE".encode() in response.data

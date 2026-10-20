@@ -14,7 +14,7 @@ class DataSourceError(RuntimeError):
     """Raised when the selected dashboard data source cannot be queried."""
 
 
-def _dashboard_from_rows(rows: list[dict], source: str) -> dict:
+def _dashboard_from_rows(rows: list[dict], source: str, forecast_note: str) -> dict:
     actual = sum(row["actual_units"] for row in rows)
     baseline_error = sum(row["baseline_abs_error"] for row in rows)
     improved_error = sum(row["improved_abs_error"] for row in rows)
@@ -34,6 +34,7 @@ def _dashboard_from_rows(rows: list[dict], source: str) -> dict:
     ]
     return {
         "source": source,
+        "forecast_note": forecast_note,
         "freshness": rows[-1]["date"] if rows else None,
         "actual_volume": actual,
         "baseline_wape": baseline_wape,
@@ -83,7 +84,7 @@ def _load_demo(region: str, category: str, promotions_only: bool) -> dict:
     rows = grouped.to_dict(orient="records")
     for row in rows:
         row["date"] = row["date"].strftime("%Y-%m-%d")
-    return _dashboard_from_rows(rows, "Synthetic demo data")
+    return _dashboard_from_rows(rows, "Synthetic demo data", "Illustrative model · WAPE")
 
 
 def _load_databricks(region: str, category: str, promotions_only: bool) -> dict:
@@ -162,7 +163,9 @@ def _load_databricks(region: str, category: str, promotions_only: bool) -> dict:
         }
         for row in result
     ]
-    return _dashboard_from_rows(rows, "Databricks Gold table")
+    return _dashboard_from_rows(
+        rows, "Databricks Gold table", "Trained model, out-of-sample · WAPE"
+    )
 
 
 def load_dashboard(region: str, category: str, promotions_only: bool) -> dict:
