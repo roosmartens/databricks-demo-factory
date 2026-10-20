@@ -96,7 +96,7 @@
             <p class="eyebrow">{{ item.store_name|upper }} · {{ item.product_name|upper }}</p>
             {% if item.status == "stockout" %}
               <h2 class="decision-title">Runs out {{ item.stockout_date|day }}</h2>
-              <p class="decision-meta">{{ "over 95" if item.stockout_probability >= 0.95 else "{:.0f}".format(item.stockout_probability * 100) }}% likely · {{ item.days_of_cover }} days of cover{% if item.promo_days %} · promotion {{ item.promo_days }} of 7 days{% endif %}{% if item.next_delivery_fill_pct is not none and item.next_delivery_fill_pct < 100 %} · supplier confirmed {{ item.next_delivery_fill_pct }}%{% endif %}</p>
+              <p class="decision-meta">{{ "over 95" if item.stockout_probability >= 0.95 else "{:.0f}".format(item.stockout_probability * 100) }}% likely to run out · {{ item.days_of_cover }} days of cover{% if item.promo_days %} · promotion {{ item.promo_days }} of 7 days{% endif %}{% if item.next_delivery_fill_pct is not none and item.next_delivery_fill_pct < 100 %} · supplier confirmed {{ item.next_delivery_fill_pct }}%{% endif %}</p>
             {% elif item.status == "waste" %}
               <h2 class="decision-title">{{ "{:.0f}".format(item.waste_units) }} units will expire unsold</h2>
               <p class="decision-meta">{{ "{:.0f}".format(item.on_hand_units) }} on hand · oldest batch expires in {{ item.days_to_expiry }} days · €{{ "{:,.0f}".format(item.waste_eur) }} at cost</p>

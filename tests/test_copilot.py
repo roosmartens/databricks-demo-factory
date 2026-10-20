@@ -196,6 +196,6 @@ def test_page_links_genie_only_when_configured(monkeypatch):
 def test_deck_tells_problem_demo_solution_future_next():
     deck = app.test_client().get("/story").data.decode()
     order = ["The problem", "The art of the possible", "Behind the solution",
-             "Business value and future state", "Next steps"]
+             "Future state at scale", "Next steps"]
     positions = [deck.index(f'aria-label="{label}"') for label in order]
     assert positions == sorted(positions)

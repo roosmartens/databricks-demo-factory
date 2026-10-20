@@ -32,8 +32,6 @@ python -m app.main
 
 Locally the copilot retrieves passages with BM25 and assembles its answer from them, so it runs offline and every sentence has a source. On Databricks, set `COPILOT_VECTOR_INDEX` and `COPILOT_SERVING_ENDPOINT` to use Vector Search and an LLM on Model Serving with the same context and citations. If either call fails, the app falls back to offline mode.
 
-The page has three AI helpers with separate jobs: **Draft message to the store** (the AI briefing) writes the hand-over for the selected decision (a labelled template when no endpoint is set), **Ask the copilot** answers follow-ups from supplier documents only and refuses when they don't cover the question, and **Ask Genie** (in Databricks, linked via `GENIE_SPACE_URL`) answers numbers questions on the Gold tables; the copilot routes those to it. Each answer has 👍/👎, posted to `/api/feedback` and appended to `FEEDBACK_LOG` (JSONL) when set.
-
 The [Frontend Slides skill](./.github/skills/frontend-slides/SKILL.md) and its MIT license and supporting assets are included for presentation work.
 
 ## 2. Run tests
