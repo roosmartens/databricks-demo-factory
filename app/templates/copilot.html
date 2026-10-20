@@ -1,0 +1,217 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#f7f8fa">
+    <title>Inventory copilot · Groenhof</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <a class="wordmark" href="{{ url_for('copilot') }}" aria-label="Groenhof home">
+          <span class="brand-mark" aria-hidden="true"></span>
+          <span>groenhof</span>
+        </a>
+        <nav class="top-nav" aria-label="Primary navigation">
+          <a class="nav-link active" href="{{ url_for('copilot') }}">Copilot</a>
+          <a class="nav-link" href="{{ url_for('accuracy') }}">Forecast accuracy</a>
+          <a class="nav-link" href="{{ url_for('story') }}">Customer story</a>
+        </nav>
+        <span class="workspace-label"><span class="status-dot"></span> {{ workspace_label }}</span>
+      </header>
+
+      <main class="main-content">
+        <section class="page-heading">
+          <div>
+            <p class="eyebrow">GROCERY INVENTORY COPILOT</p>
+            <h1>Today's shelf risks, and what to do.</h1>
+            <p class="subheading">{{ snapshot.as_of|day }}, 05:30 · {{ snapshot.quality.store_products }} store-products across 4 stores · next 7 days</p>
+          </div>
+          <div class="data-badge">
+            <span class="badge-dot"></span>
+            {{ snapshot.source }}
+          </div>
+        </section>
+
+        <!-- The four layers, left to right, as one flow. -->
+        <section class="layer-flow" aria-label="From source data to decision">
+          <article class="layer">
+            <p class="layer-step">1 · ONE VERSION OF THE TRUTH</p>
+            <h2>Governed data</h2>
+            <ul class="source-chips">
+              <li><b>Postgres</b> sales &amp; promos</li>
+              <li><b>MySQL</b> store stock</li>
+              <li><b>Supplier portal</b> deliveries</li>
+              <li><b>Documents</b> supplier knowledge</li>
+            </ul>
+            <p class="layer-note">Joined on <strong>store × product</strong> · {{ snapshot.quality.pos_quarantined }} bad rows quarantined · {{ snapshot.quality.inventory_keys_standardized }} store codes fixed</p>
+          </article>
+          <i class="layer-arrow" aria-hidden="true">→</i>
+          <article class="layer">
+            <p class="layer-step">2 · PREDICT</p>
+            <h2>Demand and shortage</h2>
+            <p class="layer-big">{{ "{:.0f}".format(snapshot.backtest.model_wape) }}%<span> forecast error</span></p>
+            <p class="layer-note">vs {{ "{:.0f}".format(snapshot.backtest.current_wape) }}% with today's "same as last week" method, on the last {{ snapshot.backtest.holdout_days }} days the model never saw</p>
+          </article>
+          <i class="layer-arrow" aria-hidden="true">→</i>
+          <article class="layer">
+            <p class="layer-step">3 · EXPLAIN</p>
+            <h2>Supplier knowledge</h2>
+            <p class="layer-big">{{ passages }}<span> passages</span></p>
+            <p class="layer-note">Agreements, grower updates, policies and past incidents, searched and cited in every answer</p>
+          </article>
+          <i class="layer-arrow" aria-hidden="true">→</i>
+          <article class="layer layer-hot">
+            <p class="layer-step">4 · DECIDE</p>
+            <h2>Actions ready</h2>
+            <p class="layer-big">€{{ "{:,.0f}".format(totals.value_at_risk) }}<span> at risk</span></p>
+            <p class="layer-note">{{ totals.stockouts }} likely stockouts · {{ totals.waste }} waste risks · {{ totals.actions }} recommended actions</p>
+          </article>
+        </section>
+
+        <div class="copilot-grid">
+          <section class="panel risk-panel" aria-label="Store-products at risk">
+            <div class="panel-heading">
+              <div>
+                <h2>Needs attention this week</h2>
+                <p>Sorted by sales and stock value at risk.</p>
+              </div>
+            </div>
+            <div class="table-scroll">
+              <table class="risk-table">
+                <thead>
+                  <tr><th>Store · product</th><th>Risk</th><th>Cover</th><th>At risk</th></tr>
+                </thead>
+                <tbody>
+                  {% for row in at_risk %}
+                    {% set selected = row.store_code == item.store_code and row.sku == item.sku %}
+                    <tr class="{% if selected %}selected{% endif %}">
+                      <td>
+                        <a href="{{ url_for('copilot', item=row.store_code ~ ':' ~ row.sku) }}" {% if selected %}aria-current="true"{% endif %}>
+                          <strong>{{ row.product_name }}</strong>
+                          <span>{{ row.store_name }}</span>
+                        </a>
+                      </td>
+                      <td>
+                        {% if row.status == "stockout" %}
+                          <span class="chip chip-red">Out {{ row.stockout_date|day }}</span>
+                        {% elif row.status == "waste" %}
+                          <span class="chip chip-amber">Waste {{ "{:.0f}".format(row.waste_units) }} units</span>
+                        {% else %}
+                          <span class="chip">Watch</span>
+                        {% endif %}
+                      </td>
+                      <td>{{ row.days_of_cover }} d</td>
+                      <td>€{{ "{:,.0f}".format(row.value_at_risk_eur) }}</td>
+                    </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <section class="panel detail-panel" aria-label="Copilot briefing">
+            <p class="eyebrow">{{ item.store_name|upper }} · {{ item.product_name|upper }}</p>
+            <h2 class="briefing-title">{{ briefing.situation }}</h2>
+
+            {% if projection %}
+              <div class="chart-legend" aria-label="Chart legend">
+                <span><i class="legend-swatch forecast"></i>Forecast demand</span>
+                <span><i class="legend-swatch stock"></i>Projected stock (below 0 = empty shelf)</span>
+                <span><i class="legend-swatch delivery"></i>Confirmed delivery</span>
+                <span><i class="legend-swatch promo"></i>Promotion</span>
+              </div>
+              <svg id="projection-chart" class="projection-chart" viewBox="0 0 640 220" role="img"
+                   aria-label="Seven-day forecast demand, deliveries and projected stock"></svg>
+              <script id="projection-data" type="application/json">{{ projection|tojson }}</script>
+            {% endif %}
+
+            <dl class="facts">
+              <div><dt>On hand</dt><dd>{{ "{:.0f}".format(item.on_hand_units) }} <small>MySQL stock</small></dd></div>
+              <div><dt>Forecast, 7 days</dt><dd>{{ "{:.0f}".format(item.forecast_7d_units) }} <small>model</small></dd></div>
+              <div><dt>Next delivery</dt><dd>{{ item.next_delivery_date|day }}{% if item.next_delivery_fill_pct is not none %} · {{ item.next_delivery_fill_pct }}%{% endif %} <small>supplier portal</small></dd></div>
+              <div><dt>Oldest batch expires</dt><dd>{{ item.days_to_expiry }} days <small>MySQL stock</small></dd></div>
+            </dl>
+
+            {% if briefing.why %}
+              <blockquote class="why"><span>Why this is happening</span>{{ briefing.why }} <cite>[1]</cite></blockquote>
+            {% endif %}
+
+            {% if briefing.llm_answer %}
+              <div class="llm-answer">{{ briefing.llm_answer }}</div>
+            {% endif %}
+
+            {% if briefing.steps %}
+              <h3 class="section-label">Recommended actions</h3>
+              <ol class="actions">
+                {% for step in briefing.steps %}
+                  <li class="action-{{ step.kind }}">
+                    <label><input type="checkbox"> {{ step.text }}</label>
+                    {% if step.ref %}<cite>[{{ step.ref }}]</cite>{% endif %}
+                  </li>
+                {% endfor %}
+              </ol>
+            {% endif %}
+
+            {% if briefing.sources %}
+              <details class="sources">
+                <summary>Sources <span>{{ briefing.sources|length }}</span></summary>
+                <ol>
+                  {% for source in briefing.sources %}
+                    <li><strong>{{ source.section }}</strong> · {{ source.title }}<p>{{ source.text }}</p></li>
+                  {% endfor %}
+                </ol>
+              </details>
+            {% endif %}
+
+            <form class="ask" id="ask-form" data-item="{{ item.store_code }}:{{ item.sku }}">
+              <label for="ask-input" class="section-label">Ask the copilot</label>
+              <div class="ask-row">
+                <input id="ask-input" name="question" type="text" autocomplete="off"
+                       placeholder="e.g. Why is the supplier short this week?">
+                <button class="button button-primary" type="submit">Ask</button>
+              </div>
+              {% set name = item.product_name|short %}
+              <div class="suggestions">
+                <button type="button" data-q="Is there an alternative supplier for {{ name }}?">Alternative supplier?</button>
+                <button type="button" data-q="Which substitutes can go on the shelf instead of {{ name }}?">Substitutes?</button>
+                <button type="button" data-q="Has this happened with {{ name }} before, and what did we learn?">Happened before?</button>
+                <button type="button" data-q="What are the rules for store transfers?">Transfer rules?</button>
+              </div>
+              <div class="answer" id="ask-answer" aria-live="polite" hidden></div>
+            </form>
+            <p class="mode-note">
+              {% if briefing.mode == "llm" %}Answer written by the model-serving endpoint, grounded in the passages above.
+              {% else %}Offline mode: answers are assembled from the retrieved passages, so every sentence has a source. On Databricks the same context goes to a governed LLM endpoint.{% endif %}
+            </p>
+          </section>
+        </div>
+
+        <details class="data-details lineage">
+          <summary>How the data is governed <span>for the data team</span></summary>
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th>Source</th><th>Bronze (raw, as delivered)</th><th>Silver (conformed)</th><th>Checks</th></tr></thead>
+              <tbody>
+                <tr><td>Postgres · point of sale</td><td>bronze_pos_sales_daily · {{ snapshot.quality.pos_rows }} rows</td><td>silver_sales</td><td>{% for reason, n in snapshot.quality.quarantine_reasons.items() %}{{ n }} × {{ reason }}{% if not loop.last %}, {% endif %}{% endfor %} → quarantine</td></tr>
+                <tr><td>Postgres · promo calendar</td><td>bronze_promo_calendar</td><td>silver_promotions</td><td>Known SKU, future dates</td></tr>
+                <tr><td>MySQL · store inventory</td><td>bronze_store_inventory · {{ snapshot.quality.inventory_rows }} rows</td><td>silver_inventory</td><td>{{ snapshot.quality.inventory_keys_standardized }} store codes trimmed and upper-cased; EAN mapped to SKU</td></tr>
+                <tr><td>Supplier portal · CSV export</td><td>bronze_supplier_deliveries · {{ snapshot.quality.delivery_rows }} rows</td><td>silver_deliveries</td><td>GTIN mapped to SKU; confirmed ≤ ordered</td></tr>
+                <tr><td>Supplier documents</td><td>Volume: /knowledge</td><td>supplier_knowledge_chunks</td><td>Synced to a Vector Search index</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="lineage-note">Gold tables <code>gold_store_product_risk</code> and <code>gold_store_product_projection</code> are written by the forecast job; the model is registered in Unity Catalog as <code>grocery_demand_forecast@champion</code>. Unity Catalog records lineage from every Gold number back to its source rows, store managers see only their own store through a row filter, and supplier cost columns are masked for store roles.</p>
+        </details>
+
+        <footer class="disclaimer">
+          <span class="disclaimer-mark">i</span>
+          <p><strong>Demonstration only.</strong> Groenhof Markets, its suppliers and all values are fictional and synthetic. Forecast accuracy is measured on generated data, not a customer result.</p>
+        </footer>
+      </main>
+    </div>
+    <script src="{{ url_for('static', filename='copilot.js') }}" defer></script>
+  </body>
+</html>

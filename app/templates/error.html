@@ -3,16 +3,16 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Unable to load · Atlas</title>
+    <title>Unable to load · Groenhof</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
   </head>
   <body class="error-page">
     <main class="error-card">
-      <a class="wordmark" href="{{ url_for('index') }}"><span class="brand-mark"></span> atlas</a>
-      <p class="eyebrow">DEMAND INTELLIGENCE</p>
+      <a class="wordmark" href="{{ url_for('copilot') }}"><span class="brand-mark"></span> groenhof</a>
+      <p class="eyebrow">INVENTORY COPILOT</p>
       <h1>We couldn't load this view.</h1>
       <p class="muted">{{ message }}</p>
-      <a class="button button-primary" href="{{ url_for('index') }}">Try again</a>
+      <a class="button button-primary" href="{{ url_for('copilot') }}">Try again</a>
     </main>
   </body>
 </html>

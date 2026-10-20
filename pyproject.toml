@@ -22,3 +22,7 @@ databricks = [
 [tool.uv]
 # cryptography 49 dropped macOS Intel wheels; 48.x has universal2 wheels, so Intel Macs avoid a Rust/OpenSSL build.
 constraint-dependencies = ["cryptography<49"]
+
+[tool.pytest.ini_options]
+# pandas 2.3 builds Timedelta with NumPy's generic unit internally; NumPy 2.5 warns about it.
+filterwarnings = ["ignore:The 'generic' unit for NumPy timedelta:DeprecationWarning"]

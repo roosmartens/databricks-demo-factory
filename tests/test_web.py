@@ -7,7 +7,7 @@ from app.data import make_demo_data, summarize
 
 def test_dashboard_renders_synthetic_data(monkeypatch):
     monkeypatch.setenv("DATA_BACKEND", "demo")
-    response = app.test_client().get("/")
+    response = app.test_client().get("/accuracy")
 
     assert response.status_code == 200
     assert b"Plan with confidence." in response.data
@@ -15,18 +15,16 @@ def test_dashboard_renders_synthetic_data(monkeypatch):
     assert b"Demand over time" in response.data
 
 
-def test_customer_story_renders_without_loading_dashboard_data():
+def test_customer_story_has_five_slides():
     response = app.test_client().get("/story")
 
     assert response.status_code == 200
-    assert b"Plan for demand," in response.data
-    assert "€77,760".encode() in response.data
-    assert b"ILLUSTRATIVE CAPACITY-VALUE SCENARIO" in response.data
+    assert response.data.count(b"data-slide") == 5
+    assert b"Empty shelves in Amsterdam." in response.data
     assert b"Unity Catalog governance" in response.data
-    assert b"VIEW FOR" not in response.data
-    assert response.data.count(b'data-slide') == 10
+    assert b"30 days to prove it" in response.data
     assert b'class="deck-stage"' in response.data
-    assert b"Open the demand-planning demo" in response.data
+    assert b"Open the live copilot" in response.data
     assert b"Download HTML" in response.data
 
 
@@ -42,7 +40,7 @@ def test_local_dashboard_metrics_match_demo_data(monkeypatch):
 
 def test_filters_are_applied(monkeypatch):
     monkeypatch.setenv("DATA_BACKEND", "demo")
-    response = app.test_client().get("/?region=Germany&category=Beverages&promotions=1")
+    response = app.test_client().get("/accuracy?region=Germany&category=Beverages&promotions=1")
 
     assert response.status_code == 200
     assert b"Through <strong>2026-09-" in response.data
@@ -50,7 +48,7 @@ def test_filters_are_applied(monkeypatch):
 
 
 def test_unknown_filter_is_rejected():
-    response = app.test_client().get("/?region=invalid")
+    response = app.test_client().get("/accuracy?region=invalid")
 
     assert response.status_code == 400
     assert b"Unknown market filter." in response.data
@@ -61,7 +59,7 @@ def test_missing_databricks_configuration_does_not_fall_back(monkeypatch):
     monkeypatch.delenv("DATABRICKS_WAREHOUSE_ID", raising=False)
     monkeypatch.delenv("DATABRICKS_GOLD_TABLE", raising=False)
 
-    response = app.test_client().get("/")
+    response = app.test_client().get("/accuracy")
 
     assert response.status_code == 503
     assert b"could not be loaded" in response.data
@@ -79,6 +77,6 @@ def test_csv_export_contains_daily_totals(monkeypatch):
 
 def test_local_forecast_is_labelled_illustrative(monkeypatch):
     monkeypatch.setenv("DATA_BACKEND", "demo")
-    response = app.test_client().get("/")
+    response = app.test_client().get("/accuracy")
 
     assert "Illustrative model · WAPE".encode() in response.data
