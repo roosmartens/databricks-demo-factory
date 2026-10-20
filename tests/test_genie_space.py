@@ -3,7 +3,7 @@ import re
 
 import pytest
 
-from genie.build_space import GOLD_COLUMNS, TABLE_NAME, build_create_request, build_serialized_space
+from genie.build_space import GOLD_COLUMNS, TABLE_NAMES, build_create_request, build_serialized_space
 
 HEX_ID = re.compile(r"^[0-9a-f]{32}$")
 
@@ -27,7 +27,7 @@ def test_space_is_deterministic_and_targets_the_forecast_table():
     assert space == build_serialized_space("main", "demo_factory")
     assert space["version"] == 2
     assert [t["identifier"] for t in space["data_sources"]["tables"]] == [
-        f"main.demo_factory.{TABLE_NAME}"
+        f"main.demo_factory.{name}" for name in TABLE_NAMES
     ]
 
 
@@ -51,11 +51,13 @@ def test_ids_are_hex_sorted_and_unique_where_the_api_requires():
 
 
 def test_column_configs_are_sorted_and_match_gold_columns():
-    table = build_serialized_space("main", "demo_factory")["data_sources"]["tables"][0]
-    names = [c["column_name"] for c in table["column_configs"]]
+    tables = build_serialized_space("main", "demo_factory")["data_sources"]["tables"]
 
-    assert names == sorted(names)
-    assert set(names) <= set(GOLD_COLUMNS)
+    assert [t["identifier"] for t in tables] == sorted(t["identifier"] for t in tables)
+    for table in tables:
+        names = [c["column_name"] for c in table["column_configs"]]
+        assert names == sorted(names)
+        assert set(names) <= set(GOLD_COLUMNS)
 
 
 def test_snippet_columns_are_qualified():

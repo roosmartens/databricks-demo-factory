@@ -9,14 +9,12 @@ env:
     value: databricks
   - name: DATABRICKS_WAREHOUSE_ID
     valueFrom: sql-warehouse
-  # Forecast accuracy page (notebooks/demand_forecast_model.py)
-  - name: DATABRICKS_GOLD_TABLE
-    value: main.demo_factory.gold_daily_forecast
+  # Forecast accuracy page reads gold_forecast_accuracy from the same schema.
   # Inventory copilot (notebooks/grocery_copilot_lakehouse.py)
   - name: DATABRICKS_COPILOT_SCHEMA
-    value: main.grocery_copilot
+    value: workspace.grocery_copilot
   # Optional: uncomment once the index and a chat endpoint exist; the app falls back to offline mode on errors.
   # - name: COPILOT_VECTOR_INDEX
-  #   value: main.grocery_copilot.supplier_knowledge_index
-  # - name: COPILOT_SERVING_ENDPOINT
-  #   value: YOUR_CHAT_MODEL_ENDPOINT
+  #   value: workspace.grocery_copilot.supplier_knowledge_index
+  - name: COPILOT_SERVING_ENDPOINT
+    valueFrom: serving-endpoint

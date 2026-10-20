@@ -28,7 +28,7 @@ python -m app.main
 
 - http://localhost:8000: the **inventory copilot** (start here in the demo)
 - http://localhost:8000/story: the **5-slide deck** (`→` to advance, `E` to edit text, "Download HTML" for an offline copy)
-- http://localhost:8000/accuracy: chain-level forecast accuracy by market and category (the earlier demand-planning dashboard)
+- http://localhost:8000/accuracy: forecast accuracy (current method vs model) by store and category, out-of-sample
 
 Locally the copilot retrieves passages with BM25 and assembles its answer from them, so it runs offline and every sentence has a source. On Databricks, set `COPILOT_VECTOR_INDEX` and `COPILOT_SERVING_ENDPOINT` to use Vector Search and an LLM on Model Serving with the same context and citations. If either call fails, the app falls back to offline mode.
 
@@ -79,27 +79,15 @@ Run [`notebooks/grocery_copilot_lakehouse.py`](./notebooks/grocery_copilot_lakeh
 
 The notebook has not been run against a live workspace in this repo's CI; check it once in your workspace before the demo.
 
-## 5b. Databricks data processing and forecast model (forecast accuracy page)
+## 5b. Forecast accuracy table
 
-Run two notebooks in the Databricks workspace UI, in this order. Both default to `main.demo_factory`; change their widgets if your workspace uses a different catalog or schema.
+The same notebook ([`notebooks/grocery_copilot_lakehouse.py`](./notebooks/grocery_copilot_lakehouse.py)) also writes `gold_forecast_accuracy`: one row per store-product and holdout day (last 14 days) with actual units, the current method (same weekday last week) and the model forecast, plus absolute errors. The model is fit on earlier days only, so the comparison is out-of-sample. The `/accuracy` page and the Genie space both read this table. WAPE is always recomputed by summing errors, never averaged.
 
-1. [`notebooks/demand_medallion.py`](./notebooks/demand_medallion.py) builds the medallion tables:
-   - **Bronze** creates deterministic source-like demo records in Delta.
-   - **Silver** standardizes types, filters invalid records, and derives forecast errors.
-   - **Gold** (`gold_daily_demand`) aggregates by date, market, and category while retaining the dimensions needed by the app.
-2. [`notebooks/demand_forecast_model.py`](./notebooks/demand_forecast_model.py) replaces the synthetic "improved" forecast with a trained one:
-   - Trains a scikit-learn gradient-boosting model on Silver history (day of week, planned promotions, market, category, and demand lags of 7+ days).
-   - Backtests it on an expanding window, so every scored day is predicted by a model that never saw it.
-   - Tracks parameters and backtest metrics in MLflow, registers the model in Unity Catalog as `main.demo_factory.demand_forecast`, and sets the `champion` alias.
-   - Writes `gold_daily_forecast`, the same shape as `gold_daily_demand` with the model forecast in `improved_units`, plus table and column comments.
-
-On the synthetic data the backtest gives a WAPE of about 5.5% against 14.1% for the current method. That shows the method working on generated data; it is not a result to promise a customer.
-
-Replace the synthetic Bronze generator with the case's ingestion step when the customer data source is known. The example writes batch Delta tables with overwrite semantics; production refresh and ingestion choices should match the actual source and update cadence.
+On synthetic data the model beats the current method; that shows the method working on generated data and is not a result to promise a customer.
 
 ## 6. Deploy to Databricks Apps
 
-Run both notebooks first, then create a Databricks App and add a SQL warehouse resource with the key `sql-warehouse`. The app uses that resource to query the Gold forecast table. Confirm that the app service principal can use the warehouse and read the table.
+Run the notebook first, then create a Databricks App and add a SQL warehouse resource with the key `sql-warehouse`. The app uses that resource to query the Gold tables. Confirm that the app service principal can use the warehouse and read the table.
 
 Set values in your current shell, using a named CLI profile:
 
@@ -110,11 +98,11 @@ export DATABRICKS_APP_NAME="your-existing-app-name"
 bash scripts/deploy-app.sh
 ```
 
-This syncs the project and deploys using `app.yaml` and the Databricks-enabled `requirements.txt`. The production app expects `main.demo_factory.gold_daily_forecast`; update `DATABRICKS_GOLD_TABLE` in `app.yaml` if you changed the notebooks' catalog or schema, or point it at `gold_daily_demand` if you skip the model notebook. It does **not** create a Databricks App resource, SQL warehouse, Unity Catalog tables, or other paid resources. Deployment needs network access and suitable permissions. Validate CLI commands against your installed version.
+This syncs the project and deploys using `app.yaml` and the Databricks-enabled `requirements.txt`. The production app reads `gold_store_product_risk` and `gold_forecast_accuracy` from the schema set in `app.yaml`; `/accuracy` returns 503 until the notebook has created the latter. It does **not** create a Databricks App resource, SQL warehouse, Unity Catalog tables, or other paid resources. Deployment needs network access and suitable permissions. Validate CLI commands against your installed version.
 
 ## 7. Genie space for natural-language questions
 
-[`genie/build_space.py`](./genie/build_space.py) defines a Genie space ("Demand forecast explorer") on `gold_daily_forecast`: column descriptions and synonyms (market, promo, model forecast), entity matching on market and category, governed WAPE measures, three example queries, sample questions, and two benchmarks. To create it in your workspace after running both notebooks:
+[`genie/build_space.py`](./genie/build_space.py) defines a Genie space ("Inventory risk and forecast accuracy") on `gold_store_product_risk` and `gold_forecast_accuracy`: column descriptions and synonyms, governed measures (value at risk, likely stockouts, waste, WAPE), example queries, sample questions, and two benchmarks. To create it in your workspace after running the notebook:
 
 ```bash
 export DATABRICKS_PROFILE="YOUR_PROFILE"
@@ -123,12 +111,12 @@ export DATABRICKS_WAREHOUSE_ID="your-warehouse-id"
 bash scripts/create-genie-space.sh
 ```
 
-The script creates the space under `/Workspace/Users/<you>/genie`. Each run creates a new space, so delete an old one in the Genie UI before re-running. Users need `CAN USE` on the warehouse and `SELECT` on the table. Try "How much does the model reduce forecast error during promotions?" before the session.
+The script creates the space under `/Workspace/Users/<you>/genie`. Each run creates a new space, so delete an old one in the Genie UI before re-running. Users need `CAN USE` on the warehouse and `SELECT` on the table. Try "Which stores have the most value at risk?" or "How much does the model reduce forecast error during promotions?" before the session.
 
 ## 8. Once the actual case arrives
 
 - Put the customer brief into `prompts/ADAPT_CASE.md`.
-- Replace the synthetic Bronze generator in `notebooks/demand_medallion.py` with the case's ingestion and processing logic, and revisit the features in `notebooks/demand_forecast_model.py`.
+- Replace the synthetic Bronze generator in `notebooks/grocery_copilot_lakehouse.py` with the case's ingestion and processing logic.
 - Update the Flask UI and local synthetic data source in `app/`, and the column descriptions and questions in `genie/build_space.py`.
 - Use `slides/SLIDE_STORYLINE.md` for the executive pitch.
 - Retest the local app **before** making Databricks connectivity a dependency.

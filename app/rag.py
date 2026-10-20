@@ -109,11 +109,33 @@ def first_sentences(text: str, n: int = 2) -> str:
     return " ".join(sentences[:n])
 
 
+_CITATION = re.compile(r"\[(\d+)\]")
+_NUMBER = re.compile(r"\d+(?:[.,]\d+)?")
+
+
+def check_grounding(answer: str, n_passages: int, context: str) -> dict:
+    """Guardrails for a generated answer: real citations, and no figures the model invented.
+
+    ``context`` is exactly what the model was shown. A number in the answer must appear in it
+    (after removing the [n] markers), so the model cannot do its own arithmetic.
+    """
+    cited = sorted({int(n) for n in _CITATION.findall(answer)})
+    invalid = [n for n in cited if not 1 <= n <= n_passages]
+    shown = {m.replace(",", ".") for m in _NUMBER.findall(_CITATION.sub("", context))}
+    shown |= {str(int(float(m))) for m in shown if float(m) == int(float(m))}
+    invented = sorted({m for m in _NUMBER.findall(_CITATION.sub("", answer))
+                       if m.replace(",", ".") not in shown})
+    return {"cited": cited, "invalid_citations": invalid, "invented_numbers": invented,
+            "passed": bool(cited) and not invalid and not invented}
+
+
+def llm_endpoint() -> str:
+    return os.environ.get("COPILOT_SERVING_ENDPOINT", "").strip()
 
 
 def call_llm(system_prompt: str, context: str, question: str) -> str | None:
     """Ask the configured Model Serving chat endpoint; ``None`` means use the offline answer."""
-    endpoint = os.environ.get("COPILOT_SERVING_ENDPOINT", "").strip()
+    endpoint = llm_endpoint()
     if not endpoint:
         return None
     try:
@@ -125,7 +147,8 @@ def call_llm(system_prompt: str, context: str, question: str) -> str | None:
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": f"{context}\n\nQuestion: {question}"},
             ], "max_tokens": 500, "temperature": 0.1})
-        return response["choices"][0]["message"]["content"]
+        content = response["choices"][0]["message"]["content"]
+        return content.strip() if isinstance(content, str) and content.strip() else None
     except Exception:
         log.exception("Model Serving call failed; using the offline answer")
         return None

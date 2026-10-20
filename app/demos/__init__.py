@@ -26,7 +26,12 @@ class Demo:
     build_snapshot: Callable[[], dict]  # offline data for the page
     read_databricks: Callable[..., dict]  # (fetch, warehouse_id, schema) -> same shape
     page_context: Callable[[dict, dict], dict]  # (snapshot, query args) -> template context
-    ask: Callable[[str, dict, str | None], dict]  # (question, snapshot, item key) -> answer
+    ask: Callable[..., dict]  # (question, snapshot, item key, approved ids) -> answer
+    briefing: Callable[..., dict]  # (snapshot, item key, approved ids) -> one generated briefing
+    build_accuracy: Callable[[], list[dict]]  # offline rows of the accuracy Gold table
+    accuracy_table: str  # Gold table (in DATABRICKS_COPILOT_SCHEMA) the accuracy page reads
+    # query parameter -> (Gold column, allowed values); drives the accuracy page filters
+    accuracy_filters: dict[str, tuple[str, tuple[str, ...]]]
 
 
 class UnknownItem(LookupError):

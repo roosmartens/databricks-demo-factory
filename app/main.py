@@ -7,16 +7,12 @@ import os
 from flask import Flask, Response, jsonify, render_template, request
 
 from app import themes
-from app.backend import DataSourceError, load_dashboard, load_snapshot
-from app.data import CATEGORIES, REGIONS
+from app.backend import DataSourceError, load_accuracy, load_snapshot
 from app.demos import UnknownItem, active_demo
 from app.demos.grocery.copilot import short_name
 
 app = Flask(__name__)
 logging.basicConfig(level=logging.INFO)
-
-ALL_MARKETS = "All markets"
-ALL_CATEGORIES = "All categories"
 
 
 @app.template_filter("day")
@@ -41,16 +37,13 @@ def demo_and_theme():
 
 
 def _filters():
-    region = request.args.get("region", ALL_MARKETS)
-    category = request.args.get("category", ALL_CATEGORIES)
-    promotions_only = request.args.get("promotions") == "1"
-
-    if region not in (ALL_MARKETS, *REGIONS):
-        return None, ("Unknown market filter.", 400)
-    if category not in (ALL_CATEGORIES, *CATEGORIES):
-        return None, ("Unknown category filter.", 400)
-
-    return (region, category, promotions_only), None
+    """The accuracy filters from the query string, validated against the demo's options."""
+    demo = active_demo()
+    selection = {name: request.args.get(name, "") for name in demo.accuracy_filters}
+    for name, (_, options) in demo.accuracy_filters.items():
+        if selection[name] and selection[name] not in options:
+            return None, (f"Unknown {name} filter.", 400)
+    return (selection, request.args.get("promotions") == "1"), None
 
 
 @app.get("/")
@@ -92,7 +85,23 @@ def ask():
         app.logger.exception("Unable to load the demo snapshot")
         return jsonify({"error": "Demo data could not be loaded."}), 503
     try:
-        return jsonify(active_demo().ask(question, snapshot, body.get("item") or None))
+        return jsonify(active_demo().ask(question, snapshot, body.get("item") or None,
+                                         body.get("approved") or None))
+    except UnknownItem as exc:
+        return jsonify({"error": str(exc)}), 404
+
+
+@app.post("/api/briefing")
+def briefing():
+    body = request.get_json(silent=True) or {}
+    try:
+        snapshot = load_snapshot()
+    except DataSourceError:
+        app.logger.exception("Unable to load the demo snapshot")
+        return jsonify({"error": "Demo data could not be loaded."}), 503
+    try:
+        return jsonify(active_demo().briefing(snapshot, body.get("item") or None,
+                                              body.get("approved") or None))
     except UnknownItem as exc:
         return jsonify({"error": str(exc)}), 404
 
@@ -103,29 +112,27 @@ def accuracy():
     if error:
         return render_template("error.html", message=error[0]), error[1]
 
-    region, category, promotions_only = filters
+    selection, promotions_only = filters
     try:
-        dashboard = load_dashboard(region, category, promotions_only)
+        dashboard = load_accuracy(selection, promotions_only)
     except DataSourceError:
-        app.logger.exception("Unable to load the demand dashboard")
+        app.logger.exception("Unable to load forecast accuracy")
         return render_template(
             "error.html",
-            message="Demand data could not be loaded. Check the app's data source configuration and try again.",
+            message="Forecast accuracy could not be loaded. Check the app's data source configuration and try again.",
         ), 503
 
     return render_template(
-        "index.html",
+        "accuracy.html",
         dashboard=dashboard,
-        regions=REGIONS,
-        categories=CATEGORIES,
+        filters={name: options for name, (_, options) in active_demo().accuracy_filters.items()},
+        selection=selection,
+        promotions_only=promotions_only,
         workspace_label=(
             "Demo workspace"
             if dashboard["source"] == "Synthetic demo data"
             else "Databricks workspace"
         ),
-        selected_region=region,
-        selected_category=category,
-        promotions_only=promotions_only,
     )
 
 
@@ -140,14 +147,14 @@ def export_csv():
     if error:
         return render_template("error.html", message=error[0]), error[1]
 
-    region, category, promotions_only = filters
+    selection, promotions_only = filters
     try:
-        dashboard = load_dashboard(region, category, promotions_only)
+        dashboard = load_accuracy(selection, promotions_only)
     except DataSourceError:
-        app.logger.exception("Unable to export demand data")
+        app.logger.exception("Unable to export forecast accuracy")
         return render_template(
             "error.html",
-            message="Demand data could not be loaded. Check the app's data source configuration and try again.",
+            message="Forecast accuracy could not be loaded. Check the app's data source configuration and try again.",
         ), 503
 
     output = io.StringIO()
@@ -166,7 +173,7 @@ def export_csv():
     return Response(
         output.getvalue(),
         mimetype="text/csv",
-        headers={"Content-Disposition": 'attachment; filename="demand-summary.csv"'},
+        headers={"Content-Disposition": 'attachment; filename="forecast-accuracy.csv"'},
     )
 
 

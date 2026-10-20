@@ -21,8 +21,9 @@
 
   const min = Math.min(...values);
   const max = Math.max(...values);
-  const yMin = Math.floor(min / 100) * 100;
-  const yMax = Math.ceil(max / 100) * 100 || yMin + 100;
+  const step = [10, 20, 50, 100, 200, 500, 1000, 2000].find((s) => (max - min) / s <= 5) || 5000;
+  const yMin = Math.floor(min / step) * step;
+  const yMax = Math.ceil(max / step) * step || yMin + step;
   const yRange = yMax - yMin || 1;
   const count = Math.max(data.dates.length - 1, 1);
   const ns = "http://www.w3.org/2000/svg";

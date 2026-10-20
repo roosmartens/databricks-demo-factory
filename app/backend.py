@@ -2,13 +2,10 @@ import os
 import re
 from functools import lru_cache
 
-from app.data import make_demo_data
 from app.demos import active_demo
 
-_TABLE_PATTERN = re.compile(
-    r"^[A-Za-z_][A-Za-z0-9_]*\.[A-Za-z_][A-Za-z0-9_]*\.[A-Za-z_][A-Za-z0-9_]*$"
-)
 _SCHEMA_PATTERN = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*\.[A-Za-z_][A-Za-z0-9_]*$")
+ACCURACY_NOTE = "Out-of-sample, last 14 days · WAPE"
 
 
 class DataSourceError(RuntimeError):
@@ -55,37 +52,32 @@ def _dashboard_from_rows(rows: list[dict], source: str, forecast_note: str) -> d
     }
 
 
-def _load_demo(region: str, category: str, promotions_only: bool) -> dict:
-    frame = make_demo_data()
-    if region != "All markets":
-        frame = frame[frame["region"] == region]
-    if category != "All categories":
-        frame = frame[frame["category"] == category]
-    if promotions_only:
-        frame = frame[frame["promotion"] == 1]
+_SUM_COLUMNS = ("actual_units", "baseline_units", "improved_units", "baseline_abs_error",
+                "improved_abs_error", "absolute_actual_units", "promotion_days")
 
-    frame = frame.assign(
-        baseline_abs_error=(frame["actual"] - frame["baseline"]).abs(),
-        improved_abs_error=(frame["actual"] - frame["improved"]).abs(),
-        absolute_actual_units=frame["actual"].abs(),
-    )
-    grouped = (
-        frame.groupby("date", as_index=False)
-        .agg(
-            actual_units=("actual", "sum"),
-            baseline_units=("baseline", "sum"),
-            improved_units=("improved", "sum"),
-            baseline_abs_error=("baseline_abs_error", "sum"),
-            improved_abs_error=("improved_abs_error", "sum"),
-            absolute_actual_units=("absolute_actual_units", "sum"),
-            promotion_days=("promotion", "sum"),
-        )
-        .sort_values("date")
-    )
-    rows = grouped.to_dict(orient="records")
-    for row in rows:
-        row["date"] = row["date"].strftime("%Y-%m-%d")
-    return _dashboard_from_rows(rows, "Synthetic demo data", "Illustrative model · WAPE")
+
+def _selected_filters(demo, selection: dict) -> list[tuple[str, str]]:
+    """(column, value) pairs for the chosen filters; unknown names or values are rejected."""
+    chosen = []
+    for name, (column, options) in demo.accuracy_filters.items():
+        value = selection.get(name)
+        if value:
+            if value not in options:
+                raise ValueError(f"Unknown {name} filter.")
+            chosen.append((column, value))
+    return chosen
+
+
+def _load_demo_accuracy(demo, chosen: list[tuple[str, str]], promotions_only: bool) -> dict:
+    frame = _offline_accuracy(demo.key)
+    for column, value in chosen:
+        frame = frame[frame[column] == value]
+    if promotions_only:
+        frame = frame[frame["promotion_days"] > 0]
+    grouped = frame.groupby("demand_date", as_index=False)[list(_SUM_COLUMNS)].sum()
+    rows = [{"date": row.pop("demand_date"), **row}
+            for row in grouped.sort_values("demand_date").to_dict(orient="records")]
+    return _dashboard_from_rows(rows, "Synthetic demo data", ACCURACY_NOTE)
 
 
 def _fetch(warehouse_id: str, query: str, parameters: list | None = None) -> list:
@@ -116,27 +108,22 @@ def _fetch(warehouse_id: str, query: str, parameters: list | None = None) -> lis
         raise DataSourceError("The Databricks SQL warehouse query failed.") from exc
 
 
-def _load_databricks(region: str, category: str, promotions_only: bool) -> dict:
+def _load_databricks_accuracy(demo, chosen: list[tuple[str, str]], promotions_only: bool) -> dict:
     warehouse_id = os.environ.get("DATABRICKS_WAREHOUSE_ID", "").strip()
-    table = os.environ.get("DATABRICKS_GOLD_TABLE", "").strip()
+    schema = os.environ.get("DATABRICKS_COPILOT_SCHEMA", "").strip()
     if not warehouse_id:
         raise DataSourceError("DATABRICKS_WAREHOUSE_ID is not configured.")
-    if not _TABLE_PATTERN.fullmatch(table):
-        raise DataSourceError(
-            "DATABRICKS_GOLD_TABLE must be a catalog.schema.table name."
-        )
+    if not _SCHEMA_PATTERN.fullmatch(schema):
+        raise DataSourceError("DATABRICKS_COPILOT_SCHEMA must be a catalog.schema name.")
+    table = f"{schema}.{demo.accuracy_table}"
 
     where = []
     parameters = []
-    if region != "All markets":
-        where.append("region = ?")
-        parameters.append(region)
-    if category != "All categories":
-        where.append("category = ?")
-        parameters.append(category)
+    for column, value in chosen:
+        where.append(f"{column} = ?")  # column names come from the demo's own filter definition
+        parameters.append(value)
     if promotions_only:
         where.append("promotion_days > 0")
-
     where_clause = f"WHERE {' AND '.join(where)}" if where else ""
     query = f"""
         SELECT
@@ -164,20 +151,25 @@ def _load_databricks(region: str, category: str, promotions_only: bool) -> dict:
         }
         for row in result
     ]
-    return _dashboard_from_rows(
-        rows, "Databricks Gold table", "Trained model, out-of-sample · WAPE"
-    )
+    return _dashboard_from_rows(rows, "Databricks Gold table", ACCURACY_NOTE)
 
 
-def load_dashboard(region: str, category: str, promotions_only: bool) -> dict:
+def load_accuracy(selection: dict, promotions_only: bool) -> dict:
+    """Forecast accuracy for the active demo, sliced by its filters (e.g. store, category)."""
+    demo = active_demo()
+    chosen = _selected_filters(demo, selection)
     backend = os.environ.get("DATA_BACKEND", "demo").strip().lower()
     if backend == "demo":
-        return _load_demo(region, category, promotions_only)
+        return _load_demo_accuracy(demo, chosen, promotions_only)
     if backend == "databricks":
-        return _load_databricks(region, category, promotions_only)
-    raise DataSourceError(
-        "DATA_BACKEND must be either 'demo' or 'databricks'."
-    )
+        return _load_databricks_accuracy(demo, chosen, promotions_only)
+    raise DataSourceError("DATA_BACKEND must be either 'demo' or 'databricks'.")
+
+
+@lru_cache(maxsize=8)
+def _offline_accuracy(demo_key: str):
+    import pandas as pd
+    return pd.DataFrame.from_records(active_demo().build_accuracy())
 
 
 @lru_cache(maxsize=8)
