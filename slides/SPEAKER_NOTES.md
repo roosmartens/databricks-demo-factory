@@ -165,8 +165,10 @@ Companion to the 10-slide deck at `/story` (press `→` to advance, `E` to edit 
 
 **Click the button** (opens `/`, the demand-planning dashboard) and then:
 1. **See demand:** pick a market and category. "Every number on this screen comes from one place."
-2. **Compare forecasts:** show current vs improved forecast. "The line closer to actual demand is the improved forecast. Same data, better model."
+2. **Compare forecasts:** show current vs improved forecast. "The line closer to actual demand is the improved forecast. Same data, better model." On the deployed app this is a trained model, scored only on days it never saw.
 3. **Act:** use Export. "From here it goes to the order process."
+
+**Optional fourth move, if the business persona is engaged (about 2 min):** open the Genie space and ask "How much does the model reduce forecast error during promotions?" Then let them ask one question of their own. "Your category managers could ask this themselves, without waiting for a report." Rehearse the questions beforehand; skip this move if you are behind at minute 30.
 
 **Say once, clearly:** "This is synthetic data. The improvement you see is illustrative, to show what's possible, not a result I'm promising."
 
@@ -217,7 +219,8 @@ Companion to the 10-slide deck at `/story` (press `→` to advance, `E` to edit 
 | "We already have a BI tool." | "Good. This isn't about replacing it. It's about feeding it, and the planners, with one trusted number." |
 | "We tried a forecasting project before." | "What happened? (listen) That's helpful. The baseline and go/no-go gate are there precisely to avoid a long project with no proof." |
 | "Our data isn't ready." | "Few people's are. Week one tells us exactly how far we are, with no commitment beyond that." |
-| "Is the AI reliable?" | "It's measured against your actual demand and compared with today's method, with planners staying in control of the decision." |
+| "Is the AI reliable?" | "It's measured against your actual demand and compared with today's method, with planners staying in control of the decision." If they push: every forecast in the demo is out-of-sample, tracked in MLflow, and the model version is registered in Unity Catalog, so you can see which model produced which number. |
+| "Will Genie make up numbers?" | "It writes SQL on the governed table and shows it. The definition of forecast error is set once, so it answers the same way every time." |
 | "Can't we build it ourselves?" | "Of course you can build parts. The question is how fast you get a trusted number and who maintains it. Let's compare in the pilot." |
 | Anyone goes deep technical | "Great question. Let me note it and we'll go through it properly with the architects. I want to make sure the business case lands first." |
 
@@ -226,7 +229,8 @@ Companion to the 10-slide deck at `/story` (press `→` to advance, `E` to edit 
 Be ready to explain:
 - **Why this story:** the problem came first, the technology followed.
 - **How you built it:** which tools and AI assistants you used, what you accepted and what you corrected.
-- **What you'd do next with more time:** a real baseline, sized stockout/overstock value, a Genie space, governance walkthrough.
+- **What you'd do next with more time:** a real baseline, sized stockout/overstock value, per-series models at customer scale, a scheduled retrain job, governance walkthrough.
+- **How the model is evaluated:** expanding-window backtest, WAPE against the current method on the same days, MLflow run plus a Unity Catalog model with a `champion` alias.
 - **What you chose not to show:** architecture detail, product list. Explain it was to keep the story customer-led.
 - **What was illustrative:** all numbers on slides 3, 4 and 6 and the data in the demo.
 
@@ -235,6 +239,7 @@ Be ready to explain:
 - [ ] Hiring manager has confirmed vertical and scenario; deck text updated to match (press `E`, then **Save edits** or **Download HTML**)
 - [ ] Illustrative numbers replaced or clearly labelled
 - [ ] Demo app runs locally (`/`) and the `/story` page loads, with a screenshot fallback ready
+- [ ] If showing the workspace: both notebooks ran, the MLflow run and registered model open, and the Genie space answers the rehearsed questions
 - [ ] Notes for each persona on one page
 - [ ] Browser zoom reset; deck in full-screen (`F11`/`Ctrl+Cmd+F`); notifications off
 - [ ] A watch or timer visible; check at minute 10, 30 and 45

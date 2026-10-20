@@ -50,7 +50,7 @@ days = (
         "date",
         F.date_sub(
             F.to_date(F.lit("2026-09-30")),
-            F.lit(periods - 1) - F.col("day_index"),
+            (F.lit(periods - 1) - F.col("day_index")).cast("int"),
         ),
     )
 )
@@ -179,8 +179,8 @@ if silver.isEmpty():
     raise ValueError("Silver validation produced no usable demand rows.")
 
 silver = (
-    silver.withColumn("baseline_abs_error", F.abs("actual_units" - "baseline_units"))
-    .withColumn("improved_abs_error", F.abs("actual_units" - "improved_units"))
+    silver.withColumn("baseline_abs_error", F.abs(F.col("actual_units") - F.col("baseline_units")))
+    .withColumn("improved_abs_error", F.abs(F.col("actual_units") - F.col("improved_units")))
     .withColumn("absolute_actual_units", F.abs("actual_units"))
 )
 silver.write.format("delta").mode("overwrite").option("overwriteSchema", "true").saveAsTable(
